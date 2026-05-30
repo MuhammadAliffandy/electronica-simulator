@@ -43,6 +43,7 @@ function validateCircuit(nodes, edges) {
   const analysisLog = [];
   const errorLog = [];
   const errorNodes = {}; // Map of nodeId -> specific error message
+  const nodes_state = {}; // Map of nodeId -> specific state object
 
   // Basic checks
   analysisLog.push(`📊 Received ${nodes.length} component(s) and ${edges.length} wire(s).`);
@@ -91,8 +92,22 @@ function validateCircuit(nodes, edges) {
   let burnoutRisk = false;
   let hasLoop = !hasOpenPins && openSwitches.length === 0;
 
+  if (hasLoop) {
+    analysisLog.push("✅ Status Rangkaian: Aktif / Terhubung");
+  } else {
+    analysisLog.push("❌ Status Rangkaian: Terputus / Tidak Aktif");
+  }
+
+  // Initialize LED states to off
+  leds.forEach(l => { nodes_state[l.id] = { ledState: "off" }; });
+
   if (battery) {
     const voltage = battery.data?.voltage || 9;
+    const isAC = battery.data?.sourceType === "ac";
+
+    if (isAC) {
+      analysisLog.push(`⚠️ Sumber tegangan adalah AC. Perhitungan di bawah ini menggunakan pendekatan rata-rata / RMS untuk simulasi dasar.`);
+    }
 
     // Capacitor Explosion logic
     capacitors.forEach(c => {
@@ -103,27 +118,23 @@ function validateCircuit(nodes, edges) {
     });
 
     if (hasLoop) {
-      // Diode Logic: check reverse bias
-      // If a diode is connected cathode-to-positive and anode-to-negative, it blocks current.
-      // We do a heuristic check: if the path from battery to diode enters cathode first.
-      let reverseBiasDiodes = 0;
-      diodes.forEach(d => {
-         const conns = adj[d.id] || [];
-         // For a basic simulator, if it's connected, we just log it. If they wired it backward intentionally, 
-         // we flag it. Without full graph directed trace, we assume it's forward unless explicitly reversed in a simple loop.
-         // Let's assume it drops 0.7V.
-      });
-
       let totalResistance = resistors.reduce((sum, r) => sum + (r.data?.resistance || 220), 0);
       pots.forEach(p => {
         const effectiveR = ((p.data?.maxResistance || 10000) * (p.data?.wiperPercent || 50)) / 100;
         totalResistance += effectiveR;
-        analysisLog.push(`🎛️ Potentiometer wiper at ${p.data?.wiperPercent || 50}% adds ${effectiveR}Ω.`);
       });
 
-      let effectiveVoltage = voltage - (diodes.length * 0.7);
+      // Diode & LED voltage drops
+      let totalVoltageDrop = diodes.length * 0.7;
+      
+      const ledSpecs = { "Red": 2.0, "Yellow": 2.1, "Green": 2.2, "Blue": 3.2, "White": 3.2 };
+      leds.forEach(l => {
+        const drop = ledSpecs[l.data?.color || "Red"] || 2.0;
+        totalVoltageDrop += drop;
+      });
+
+      let effectiveVoltage = voltage - totalVoltageDrop;
       if (effectiveVoltage < 0) effectiveVoltage = 0;
-      if (diodes.length > 0) analysisLog.push(`▶️ Diodes cause a voltage drop of ${diodes.length * 0.7}V.`);
 
       // Transistor Logic
       let transBlocked = false;
@@ -134,42 +145,67 @@ function validateCircuit(nodes, edges) {
            transBlocked = true;
            errorLog.push(`⬛ Transistor MATI: Pin basis tidak terhubung. Arus diblokir.`);
            errorNodes[t.id] = "Transistor MATI. Basis butuh koneksi.";
-        } else {
-           analysisLog.push(`⬛ Transistor MENYALA: Basis terhubung, aliran Kolektor-Emitor terbuka.`);
         }
       });
 
-      if (transBlocked) hasLoop = false;
+      if (transBlocked) {
+        hasLoop = false;
+        analysisLog.push("❌ Rangkaian terblokir oleh transistor yang mati.");
+      }
 
       if (hasLoop) {
+        let currentString = "0 mA";
         if (totalResistance > 0) {
-          const current = (effectiveVoltage / totalResistance).toFixed(4);
-          analysisLog.push(`⚡ Estimated current (V=${effectiveVoltage.toFixed(1)}V / R=${totalResistance}Ω) = ${current}A (${(current * 1000).toFixed(1)}mA)`);
+          const current = effectiveVoltage / totalResistance; // in Amperes
+          const currentMa = current * 1000;
+          currentString = `${currentMa.toFixed(1)} mA`;
+          
+          let calculationDetail = `Diketahui rangkaian yang anda input: `;
+          if (resistors.length > 0) calculationDetail += resistors.map((r, i) => `R${i+1} = ${r.data?.resistance || 220}Ω`).join(', ') + ". ";
+          if (pots.length > 0) calculationDetail += pots.map((p, i) => `Potensiometer = ${(((p.data?.maxResistance || 10000) * (p.data?.wiperPercent || 50)) / 100).toFixed(0)}Ω`).join(', ') + ". ";
+          calculationDetail += `Total Hambatan = ${totalResistance.toFixed(0)}Ω. `;
+          calculationDetail += `Sumber Tegangan = ${voltage}V. `;
+          if (totalVoltageDrop > 0) calculationDetail += `Tegangan terpakai oleh Semikonduktor (LED/Dioda) = ${totalVoltageDrop.toFixed(1)}V. `;
+          calculationDetail += `Tegangan sisa efektif = ${effectiveVoltage.toFixed(1)}V. `;
+          calculationDetail += `Rangkaian dinyatakan terhubung dan arus mengalir sebesar ${currentString}.`;
+
+          analysisLog.push("📐 Analisis Perhitungan:");
+          analysisLog.push(calculationDetail);
           
           leds.forEach(l => {
-            const currentMa = current * 1000;
-            if (currentMa > 30) {
+            if (effectiveVoltage <= 0) {
+              analysisLog.push(`💡 LED (${l.data?.color || "Red"}) mati karena tegangan sisa tidak cukup.`);
+              nodes_state[l.id] = { ledState: "off" };
+            } else if (currentMa > 30) {
               errorLog.push(`⚠️ Arus (${currentMa.toFixed(1)}mA) melewati batas maksimal LED. Risiko Terbakar!`);
               errorNodes[l.id] = "Terbakar! Arus terlalu tinggi.";
+              nodes_state[l.id] = { ledState: "burnt" };
               burnoutRisk = true;
             } else if (currentMa < 5) {
               analysisLog.push(`💡 LED sangat redup. Tambah tegangan atau kurangi hambatan (resistor).`);
+              nodes_state[l.id] = { ledState: "dim" };
             } else {
                analysisLog.push(`💡 Arus LED aman dan optimal.`);
+               nodes_state[l.id] = { ledState: "bright" };
             }
           });
         } else {
+          // No resistance! Short circuit!
+          analysisLog.push("📐 Analisis Perhitungan: Rangkaian memiliki Total Hambatan = 0Ω. Arus menjadi tak terhingga (Korsleting / Short Circuit)!");
           if (leds.length > 0) {
             burnoutRisk = true;
             errorLog.push("🔥 PERINGATAN: Risiko LED terbakar! Terhubung langsung tanpa hambatan (resistor).");
-            leds.forEach(l => errorNodes[l.id] = "Risiko terbakar! Menerima daya langsung tanpa resistor pembatas arus.");
+            leds.forEach(l => {
+               errorNodes[l.id] = "Risiko terbakar! Menerima daya langsung tanpa resistor pembatas arus.";
+               nodes_state[l.id] = { ledState: "burnt" };
+            });
           }
         }
       }
     }
   }
 
-  return { analysisLog, errorLog, hasLoop, burnoutRisk, errorNodes };
+  return { analysisLog, errorLog, hasLoop, burnoutRisk, errorNodes, nodes_state };
 }
 
 // ============================================
@@ -476,6 +512,7 @@ app.post("/api/evaluate-circuit", async (req, res) => {
       },
       error_log: validationResult.errorLog,
       error_nodes: validationResult.errorNodes,
+      nodes_state: validationResult.nodes_state,
     };
 
     res.json(response);

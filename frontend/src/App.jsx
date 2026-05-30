@@ -36,7 +36,7 @@ const i18n = {
     headerSubtitle: "AI-Powered Circuit Learning Lab",
     systemOnline: "System Online",
     components: "🧩 Components",
-    catPower: "⚡ Power",
+    catActive: "⚡ Active",
     catPassive: "📐 Passive",
     catOutput: "💡 Output",
     catControl: "🔘 Control",
@@ -63,8 +63,8 @@ const i18n = {
     headerSubtitle: "Lab Pembelajaran Rangkaian Berbasis AI",
     systemOnline: "Sistem Aktif",
     components: "🧩 Komponen",
-    catPower: "⚡ Daya",
-    catPassive: "📐 Pasif",
+    catActive: "⚡ Komponen Aktif",
+    catPassive: "📐 Komponen Pasif",
     catOutput: "💡 Keluaran",
     catControl: "🔘 Kontrol",
     catWiring: "🔗 Kabel",
@@ -138,21 +138,30 @@ const FourWayHandles = () => (
 
 function BatteryNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
+  const isAC = data.sourceType === "ac";
   return (
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} battery-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <FourWayHandles />
-      <span className="node-emoji">🔋</span>
+      <Handle type="source" position={Position.Left} id="left" />
+      <Handle type="source" position={Position.Right} id="right" />
+      <span className="node-emoji">{isAC ? "∿" : "⎓"}</span>
       <div className="node-label">{data.label}</div>
+      <div className="node-value" style={{ marginBottom: "4px" }}>
+        <select value={data.sourceType || "dc"} onChange={(e) => updateNodeData(id, { sourceType: e.target.value, label: e.target.value === 'ac' ? 'AC Source' : 'DC Source' })} className="node-input nodrag" style={{ width: '60px' }}>
+          <option value="dc">DC</option>
+          <option value="ac">AC</option>
+        </select>
+      </div>
       <div className="node-value">
         <input 
           type="number" 
           value={data.voltage || 9} 
           onChange={(e) => updateNodeData(id, { voltage: Number(e.target.value) })}
+          onFocus={(e) => e.target.select()}
           className="node-input nodrag"
         />
-        V DC
+        V
       </div>
     </div>
   );
@@ -176,7 +185,8 @@ function ResistorNode({ id, data, selected }) {
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} resistor-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <FourWayHandles />
+      <Handle type="source" position={Position.Left} id="left" />
+      <Handle type="source" position={Position.Right} id="right" />
       <div className="resistor-body nodrag">
         <div className="resistor-band" style={{ backgroundColor: bands[0] }}></div>
         <div className="resistor-band" style={{ backgroundColor: bands[1] }}></div>
@@ -189,6 +199,7 @@ function ResistorNode({ id, data, selected }) {
           type="number" 
           value={data.resistance || 220} 
           onChange={(e) => updateNodeData(id, { resistance: Number(e.target.value) })}
+          onFocus={(e) => e.target.select()}
           className="node-input nodrag"
         />
         Ω
@@ -246,6 +257,7 @@ function CapacitorNode({ id, data, selected }) {
           type="number" 
           value={data.capacitance || 100} 
           onChange={(e) => updateNodeData(id, { capacitance: Number(e.target.value) })}
+          onFocus={(e) => e.target.select()}
           className="node-input nodrag"
         />
         {isElco ? "µF" : "nF"}
@@ -262,7 +274,7 @@ function CapacitorNode({ id, data, selected }) {
 
 function LEDNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
-  const isBurnt = data.hasError && data.errorMessage && data.errorMessage.includes("Burnout");
+  const isBurnt = data.ledState === "burnt" || (data.hasError && data.errorMessage && data.errorMessage.includes("Burnout"));
   const isDim = data.ledState === "dim";
   const isBright = data.ledState === "bright";
   
@@ -271,25 +283,37 @@ function LEDNode({ id, data, selected }) {
   else if (data.color === "Blue") emoji = "💎";
   else if (data.color === "Green") emoji = "🟢";
   else if (data.color === "White") emoji = "⬜";
+  else if (data.color === "Yellow") emoji = "🟡";
   else emoji = "🔴";
 
+  // Specification map
+  const spec = {
+    Red: "2.0V",
+    Yellow: "2.1V",
+    Green: "2.2V",
+    Blue: "3.2V",
+    White: "3.2V"
+  }[data.color || "Red"];
+
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} led-node ${selected ? "selected" : ""} ${isBright ? "led-bright" : ""} ${isDim ? "led-dim" : ""}`}>
+    <div className={`circuit-node ${data.isSuccess ? "success" : ""} led-node ${selected ? "selected" : ""} ${isBright ? "led-bright" : ""} ${isDim ? "led-dim" : ""} ${data.ledState === "off" ? "led-off" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
       <FourWayHandles />
       <span className="node-emoji">{emoji}</span>
       <div className="node-label">{data.label}</div>
+      <div style={{ fontSize: "0.6rem", color: "var(--text-muted)", marginBottom: "4px" }}>Spec: {spec}</div>
       <div className="node-value">
         <select 
           value={data.color || "Red"} 
           onChange={(e) => updateNodeData(id, { color: e.target.value })}
           className="node-input nodrag"
-          style={{ width: "60px" }}
+          style={{ width: "70px" }}
         >
           <option value="Red">Red</option>
-          <option value="Blue">Blue</option>
+          <option value="Yellow">Yellow</option>
           <option value="Green">Green</option>
+          <option value="Blue">Blue</option>
           <option value="White">White</option>
         </select>
       </div>
@@ -352,12 +376,23 @@ function SwitchNode({ id, data, selected }) {
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} switch-node ${isOn ? "switch-closed" : "switch-open"} ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <FourWayHandles />
-      <div className="node-emoji nodrag" onClick={toggleSwitch} style={{ cursor: "pointer", display: "inline-block" }}>
-        {isOn ? "🟢" : "🔴"}
+      <Handle type="source" position={Position.Left} id="left" />
+      <Handle type="source" position={Position.Right} id="right" />
+      <div className="nodrag" onClick={toggleSwitch} style={{ cursor: "pointer", display: "inline-block", margin: "5px 0" }}>
+        <svg width="40" height="20" viewBox="0 0 40 20">
+          {/* Terminals */}
+          <circle cx="5" cy="10" r="3" fill="currentColor" />
+          <circle cx="35" cy="10" r="3" fill="currentColor" />
+          {/* Switch Lever */}
+          {isOn ? (
+            <line x1="5" y1="10" x2="35" y2="10" stroke="currentColor" strokeWidth="3" />
+          ) : (
+            <line x1="5" y1="10" x2="30" y2="2" stroke="currentColor" strokeWidth="3" />
+          )}
+        </svg>
       </div>
       <div className="node-label">{data.label}</div>
-      <div className="node-value">{isOn ? "CLOSED" : "OPEN"}</div>
+      <div className="node-value" style={{ fontWeight: 'bold', color: isOn ? '#10b981' : '#ef4444' }}>{isOn ? "CLOSED" : "OPEN"}</div>
     </div>
   );
 }
@@ -376,6 +411,7 @@ function MotorNode({ id, data, selected }) {
           type="number" 
           value={data.ratedVoltage || 5} 
           onChange={(e) => updateNodeData(id, { ratedVoltage: Number(e.target.value) })}
+          onFocus={(e) => e.target.select()}
           className="node-input nodrag"
         />
         V Motor
@@ -398,6 +434,7 @@ function BuzzerNode({ id, data, selected }) {
           type="number" 
           value={data.minVoltage || 3} 
           onChange={(e) => updateNodeData(id, { minVoltage: Number(e.target.value) })}
+          onFocus={(e) => e.target.select()}
           className="node-input nodrag"
         />
         V min
@@ -486,9 +523,10 @@ const defaultNodes = [
     type: "battery",
     position: { x: 80, y: 200 },
     data: {
-      label: "9V Battery",
+      label: "9V DC Source",
       componentType: "battery",
       voltage: 9,
+      sourceType: "dc",
     },
   },
   {
@@ -521,16 +559,16 @@ const defaultEdges = [];
 // ============================================
 
 const paletteItems = [
-  // Power
-  { type: "battery", label: "Battery", emoji: "🔋", voltage: 9, category: "power" },
+  // Active
+  { type: "battery", label: "Voltage Source", emoji: "⎓", voltage: 9, sourceType: "dc", category: "active" },
+  { type: "diode", label: "Diode", emoji: "▶️", category: "active" },
+  { type: "transistor", label: "Transistor", emoji: "⬛", transistorType: "npn", category: "active" },
+  { type: "led", label: "LED", emoji: "💡", color: "Red", category: "active" },
   // Passive
   { type: "resistor", label: "Resistor", emoji: "⚡", resistance: 220, category: "passive" },
   { type: "potentiometer", label: "Potentiometer", emoji: "🎛️", wiperPercent: 50, maxResistance: 10000, category: "passive" },
   { type: "capacitor", label: "Capacitor", emoji: "🔵", capacitance: 100, capType: "elco", category: "passive" },
-  // Semiconductors / Output
-  { type: "diode", label: "Diode", emoji: "▶️", category: "output" },
-  { type: "transistor", label: "Transistor", emoji: "⬛", transistorType: "npn", category: "output" },
-  { type: "led", label: "LED", emoji: "💡", color: "Red", category: "output" },
+  // Output
   { type: "motor", label: "DC Motor", emoji: "⚙️", ratedVoltage: 5, category: "output" },
   { type: "buzzer", label: "Buzzer", emoji: "🔔", minVoltage: 3, category: "output" },
   // Control & Instruments
@@ -542,7 +580,7 @@ const paletteItems = [
 ];
 
 // Category keys for palette (labels come from i18n)
-const paletteCategoryKeys = ["power", "passive", "output", "control", "wiring"];
+const paletteCategoryKeys = ["active", "passive", "output", "control", "wiring"];
 
 // ============================================
 // AI TUTOR RESPONSE PANEL
@@ -772,7 +810,7 @@ export default function App() {
 
   // Category labels mapped from i18n
   const catLabels = {
-    power: t.catPower,
+    active: t.catActive,
     passive: t.catPassive,
     output: t.catOutput,
     control: t.catControl,
@@ -835,6 +873,7 @@ export default function App() {
           label: data.label,
           componentType: data.type,
           ...(data.voltage !== undefined && { voltage: data.voltage }),
+          ...(data.sourceType && { sourceType: data.sourceType }),
           ...(data.resistance !== undefined && { resistance: data.resistance }),
           ...(data.capacitance !== undefined && { capacitance: data.capacitance }),
           ...(data.color && { color: data.color }),
@@ -899,6 +938,7 @@ export default function App() {
               hasError: hasErr,
               errorMessage: hasErr ? data.error_nodes[n.id] : null,
               isSuccess: !hasErr && isCircuitSuccess,
+              ...(data.nodes_state && data.nodes_state[n.id] ? data.nodes_state[n.id] : {})
             },
           };
         })
