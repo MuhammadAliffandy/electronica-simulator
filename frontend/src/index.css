@@ -966,10 +966,23 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 
+/* ──────────────────────────────────────────────────────
+   LED NODE — state classes (applied via inline style now)
+   These base classes still needed for border color accent
+────────────────────────────────────────────────────── */
 .led-node { border-top: 4px solid #ef4444; }
-.led-node.led-bright { box-shadow: 0 0 15px 5px rgba(239, 68, 68, 0.4); }
-.led-node.led-dim { opacity: 0.8; }
-.led-node.led-off { filter: grayscale(80%) brightness(0.6); opacity: 0.6; }
+.led-node.led-yellow { border-top-color: #eab308; }
+.led-node.led-green  { border-top-color: #22c55e; }
+.led-node.led-blue   { border-top-color: #3b82f6; }
+.led-node.led-white  { border-top-color: #f8fafc; }
+
+/* Burnt animation */
+.led-node.led-burnt {
+  animation: shake 0.4s infinite;
+  border-color: #ef4444 !important;
+  background: rgba(239,68,68,0.08) !important;
+}
+
 .diode-node { border-top: 4px solid #f59e0b; }
 
 .circuit-node {
@@ -1229,13 +1242,9 @@ body {
   100% { transform: translate(1px, -2px) rotate(-1deg); }
 }
 
-.led-bright {
-  box-shadow: 0 0 30px currentColor !important;
-  background-color: rgba(255,255,255,0.1);
-}
-.led-dim {
-  opacity: 0.5;
-}
+/* LED state classes (legacy bright/dim — now handled by inline style + SVG) */
+.led-bright { /* handled inline */ }
+.led-dim    { /* handled inline */ }
 
 /* Resistor Visuals */
 .resistor-body {
@@ -1354,4 +1363,100 @@ body {
 }
 .react-flow__minimap-node {
   fill: var(--text-muted) !important;
+}
+
+/* ============================================
+   VOLTAGE SOURCE SVG SYMBOL
+   ============================================ */
+.vsource-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f59e0b;
+  margin: 4px auto;
+  filter: drop-shadow(0 0 6px rgba(245,158,11,0.45));
+}
+
+/* ============================================
+   LED SYMBOL & SPEC BADGES
+   ============================================ */
+.led-symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px auto;
+  overflow: visible;
+}
+
+.led-spec-row {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin: 4px 0 2px;
+  flex-wrap: wrap;
+}
+
+.led-spec-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.led-state-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 4px;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================
+   SWITCH SVG WRAPPER
+   ============================================ */
+.switch-svg-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px auto;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+  overflow: visible;
+}
+
+.switch-svg-wrap:hover {
+  transform: scale(1.08);
+}
+
+.switch-svg-wrap:active {
+  transform: scale(0.96);
+}
+
+/* ============================================
+   COMPONENT ACTIVE / PASSIVE BADGES (Sidebar)
+   ============================================ */
+.component-badge {
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 99px;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.badge-active {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-passive {
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(124, 58, 237, 0.3);
 }

@@ -92,10 +92,11 @@ function validateCircuit(nodes, edges) {
   let burnoutRisk = false;
   let hasLoop = !hasOpenPins && openSwitches.length === 0;
 
+  // ── STATUS BADGE (ditampilkan pertama) ──────────────────────────────────
   if (hasLoop) {
-    analysisLog.push("✅ Status Rangkaian: Aktif / Terhubung");
+    analysisLog.push("🟢 STATUS RANGKAIAN: AKTIF / TERHUBUNG");
   } else {
-    analysisLog.push("❌ Status Rangkaian: Terputus / Tidak Aktif");
+    analysisLog.push("🔴 STATUS RANGKAIAN: TERPUTUS / TIDAK AKTIF");
   }
 
   // Initialize LED states to off
@@ -106,7 +107,7 @@ function validateCircuit(nodes, edges) {
     const isAC = battery.data?.sourceType === "ac";
 
     if (isAC) {
-      analysisLog.push(`⚠️ Sumber tegangan adalah AC. Perhitungan di bawah ini menggunakan pendekatan rata-rata / RMS untuk simulasi dasar.`);
+      analysisLog.push(`⚠️ Sumber tegangan adalah AC (${voltage}V). Perhitungan menggunakan pendekatan nilai puncak untuk simulasi dasar.`);
     }
 
     // Capacitor Explosion logic
@@ -118,33 +119,58 @@ function validateCircuit(nodes, edges) {
     });
 
     if (hasLoop) {
-      let totalResistance = resistors.reduce((sum, r) => sum + (r.data?.resistance || 220), 0);
-      pots.forEach(p => {
-        const effectiveR = ((p.data?.maxResistance || 10000) * (p.data?.wiperPercent || 50)) / 100;
-        totalResistance += effectiveR;
+      // ── HITUNG TOTAL HAMBATAN ──────────────────────────────────────────
+      let resistorDetails = [];
+      let totalResistance = 0;
+
+      resistors.forEach((r, i) => {
+        const rVal = r.data?.resistance || 220;
+        totalResistance += rVal;
+        resistorDetails.push({ label: `R${i + 1}`, value: rVal, unit: "Ω" });
       });
 
-      // Diode & LED voltage drops
-      let totalVoltageDrop = diodes.length * 0.7;
-      
-      const ledSpecs = { "Red": 2.0, "Yellow": 2.1, "Green": 2.2, "Blue": 3.2, "White": 3.2 };
-      leds.forEach(l => {
-        const drop = ledSpecs[l.data?.color || "Red"] || 2.0;
-        totalVoltageDrop += drop;
+      pots.forEach((p, i) => {
+        const effectiveR = ((p.data?.maxResistance || 10000) * (p.data?.wiperPercent || 50)) / 100;
+        totalResistance += effectiveR;
+        resistorDetails.push({ label: `Pot${i + 1}`, value: effectiveR, unit: "Ω" });
+      });
+
+      // ── HITUNG TEGANGAN JATUH (VOLTAGE DROP) ──────────────────────────
+      const ledSpecs = {
+        Red:    { vf: 2.0, ifMax: 20 },
+        Yellow: { vf: 2.1, ifMax: 20 },
+        Green:  { vf: 2.2, ifMax: 25 },
+        Blue:   { vf: 3.2, ifMax: 20 },
+        White:  { vf: 3.2, ifMax: 20 },
+      };
+
+      let totalVoltageDrop = 0;
+      let dropDetails = [];
+
+      if (diodes.length > 0) {
+        totalVoltageDrop += diodes.length * 0.7;
+        dropDetails.push(`Dioda × ${diodes.length} = ${(diodes.length * 0.7).toFixed(1)}V (masing-masing 0.7V)`);
+      }
+
+      leds.forEach((l, i) => {
+        const color = l.data?.color || "Red";
+        const spec = ledSpecs[color] || ledSpecs.Red;
+        totalVoltageDrop += spec.vf;
+        dropDetails.push(`LED ${color} #${i + 1}: Vf = ${spec.vf}V`);
       });
 
       let effectiveVoltage = voltage - totalVoltageDrop;
       if (effectiveVoltage < 0) effectiveVoltage = 0;
 
-      // Transistor Logic
+      // ── CEK TRANSISTOR ─────────────────────────────────────────────────
       let transBlocked = false;
       transistors.forEach(t => {
         const conns = adj[t.id] || [];
         const hasBase = conns.some(c => c.fromPin === 'base');
         if (!hasBase) {
-           transBlocked = true;
-           errorLog.push(`⬛ Transistor MATI: Pin basis tidak terhubung. Arus diblokir.`);
-           errorNodes[t.id] = "Transistor MATI. Basis butuh koneksi.";
+          transBlocked = true;
+          errorLog.push(`⬛ Transistor MATI: Pin basis tidak terhubung. Arus diblokir.`);
+          errorNodes[t.id] = "Transistor MATI. Basis butuh koneksi.";
         }
       });
 
@@ -154,50 +180,101 @@ function validateCircuit(nodes, edges) {
       }
 
       if (hasLoop) {
-        let currentString = "0 mA";
-        if (totalResistance > 0) {
-          const current = effectiveVoltage / totalResistance; // in Amperes
-          const currentMa = current * 1000;
-          currentString = `${currentMa.toFixed(1)} mA`;
-          
-          let calculationDetail = `Diketahui rangkaian yang anda input: `;
-          if (resistors.length > 0) calculationDetail += resistors.map((r, i) => `R${i+1} = ${r.data?.resistance || 220}Ω`).join(', ') + ". ";
-          if (pots.length > 0) calculationDetail += pots.map((p, i) => `Potensiometer = ${(((p.data?.maxResistance || 10000) * (p.data?.wiperPercent || 50)) / 100).toFixed(0)}Ω`).join(', ') + ". ";
-          calculationDetail += `Total Hambatan = ${totalResistance.toFixed(0)}Ω. `;
-          calculationDetail += `Sumber Tegangan = ${voltage}V. `;
-          if (totalVoltageDrop > 0) calculationDetail += `Tegangan terpakai oleh Semikonduktor (LED/Dioda) = ${totalVoltageDrop.toFixed(1)}V. `;
-          calculationDetail += `Tegangan sisa efektif = ${effectiveVoltage.toFixed(1)}V. `;
-          calculationDetail += `Rangkaian dinyatakan terhubung dan arus mengalir sebesar ${currentString}.`;
+        // ── ANALISIS PERHITUNGAN STEP-BY-STEP ─────────────────────────
+        analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        analysisLog.push("📐 ANALISIS PERHITUNGAN RANGKAIAN");
+        analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
-          analysisLog.push("📐 Analisis Perhitungan:");
-          analysisLog.push(calculationDetail);
-          
+        // Langkah 1 - Komponen diketahui
+        let step1 = `📌 Diketahui: Sumber tegangan Vs = ${voltage}V${isAC ? " AC" : " DC"}`;
+        if (resistorDetails.length > 0) {
+          step1 += " | " + resistorDetails.map(d => `${d.label} = ${d.value}${d.unit}`).join(", ");
+        }
+        if (leds.length > 0) {
+          step1 += " | " + leds.map((l, i) => {
+            const color = l.data?.color || "Red";
+            const spec = ledSpecs[color] || ledSpecs.Red;
+            return `LED ${color} #${i+1} (Vf=${spec.vf}V, If_max=${spec.ifMax}mA)`;
+          }).join(", ");
+        }
+        analysisLog.push(step1);
+
+        // Langkah 2 - Total hambatan
+        if (resistorDetails.length > 1) {
+          const rFormula = resistorDetails.map(d => `${d.value}`).join(" + ");
+          analysisLog.push(`📌 Langkah 1 — Total Hambatan: R_total = ${rFormula} = ${totalResistance.toFixed(1)}Ω`);
+        } else if (resistorDetails.length === 1) {
+          analysisLog.push(`📌 Langkah 1 — Total Hambatan: R_total = ${totalResistance.toFixed(1)}Ω`);
+        } else {
+          analysisLog.push(`📌 Langkah 1 — Total Hambatan: R_total = 0Ω (tidak ada resistor!)`);
+        }
+
+        // Langkah 3 - Tegangan jatuh
+        if (dropDetails.length > 0) {
+          analysisLog.push(`📌 Langkah 2 — Tegangan Jatuh Semikonduktor: ${dropDetails.join(" + ")} → ΣVf = ${totalVoltageDrop.toFixed(2)}V`);
+          analysisLog.push(`📌 Langkah 3 — Tegangan Efektif: Veff = Vs - ΣVf = ${voltage}V - ${totalVoltageDrop.toFixed(2)}V = ${effectiveVoltage.toFixed(2)}V`);
+        } else {
+          analysisLog.push(`📌 Langkah 2 — Tegangan Efektif: Veff = Vs = ${voltage}V (tidak ada komponen semikonduktor)`);
+        }
+
+        if (totalResistance > 0) {
+          const current = effectiveVoltage / totalResistance;
+          const currentMa = current * 1000;
+          const vResistor = effectiveVoltage; // tegangan pada resistor (seri)
+
+          analysisLog.push(`📌 Langkah 4 — Hukum Ohm: I = Veff / R_total = ${effectiveVoltage.toFixed(2)}V / ${totalResistance.toFixed(1)}Ω = ${currentMa.toFixed(2)} mA`);
+
+          // Tegangan pada masing-masing resistor (proporsional)
+          if (resistorDetails.length > 0) {
+            const vPerResistor = resistorDetails.map(d => {
+              const vr = (d.value / totalResistance) * vResistor;
+              return `${d.label}: V = ${vr.toFixed(2)}V`;
+            }).join(" | ");
+            analysisLog.push(`📌 Distribusi Tegangan Resistor: ${vPerResistor}`);
+          }
+
+          // Kesimpulan naratif
+          let naratif = `✅ Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${currentMa.toFixed(2)} mA`;
+          if (resistorDetails.length > 0) {
+            naratif += ` dengan total hambatan ${totalResistance.toFixed(1)}Ω`;
+          }
+          naratif += ` dan tegangan sumber ${voltage}V`;
+          if (totalVoltageDrop > 0) {
+            naratif += ` (tegangan jatuh semikonduktor: ${totalVoltageDrop.toFixed(2)}V)`;
+          }
+          naratif += ".";
+          analysisLog.push(naratif);
+
           leds.forEach(l => {
+            const color = l.data?.color || "Red";
+            const spec = ledSpecs[color] || ledSpecs.Red;
             if (effectiveVoltage <= 0) {
-              analysisLog.push(`💡 LED (${l.data?.color || "Red"}) mati karena tegangan sisa tidak cukup.`);
+              analysisLog.push(`💡 LED ${color}: Mati — tegangan efektif tidak cukup untuk menyalakan LED.`);
               nodes_state[l.id] = { ledState: "off" };
-            } else if (currentMa > 30) {
-              errorLog.push(`⚠️ Arus (${currentMa.toFixed(1)}mA) melewati batas maksimal LED. Risiko Terbakar!`);
-              errorNodes[l.id] = "Terbakar! Arus terlalu tinggi.";
+            } else if (currentMa > spec.ifMax) {
+              errorLog.push(`⚠️ LED ${color}: Arus ${currentMa.toFixed(1)}mA MELEBIHI batas If_max=${spec.ifMax}mA → Risiko Terbakar!`);
+              errorNodes[l.id] = `Terbakar! Arus ${currentMa.toFixed(1)}mA > batas ${spec.ifMax}mA.`;
               nodes_state[l.id] = { ledState: "burnt" };
               burnoutRisk = true;
             } else if (currentMa < 5) {
-              analysisLog.push(`💡 LED sangat redup. Tambah tegangan atau kurangi hambatan (resistor).`);
+              analysisLog.push(`💡 LED ${color}: Menyala REDUP (${currentMa.toFixed(1)}mA < 5mA). Kurangi hambatan atau naikkan tegangan.`);
               nodes_state[l.id] = { ledState: "dim" };
             } else {
-               analysisLog.push(`💡 Arus LED aman dan optimal.`);
-               nodes_state[l.id] = { ledState: "bright" };
+              analysisLog.push(`💡 LED ${color}: Menyala OPTIMAL ✅ — Arus ${currentMa.toFixed(1)}mA dalam rentang aman (5–${spec.ifMax}mA).`);
+              nodes_state[l.id] = { ledState: "bright" };
             }
           });
+
         } else {
-          // No resistance! Short circuit!
-          analysisLog.push("📐 Analisis Perhitungan: Rangkaian memiliki Total Hambatan = 0Ω. Arus menjadi tak terhingga (Korsleting / Short Circuit)!");
+          // Korsleting — tidak ada hambatan
+          analysisLog.push(`⚡ Langkah 4 — Hukum Ohm: I = ${effectiveVoltage.toFixed(2)}V / 0Ω = ∞ (TAK TERHINGGA!) → KORSLETING!`);
+          analysisLog.push(`✅ Kesimpulan: Rangkaian terhubung TETAPI terjadi SHORT CIRCUIT karena tidak ada hambatan (resistor).`);
           if (leds.length > 0) {
             burnoutRisk = true;
-            errorLog.push("🔥 PERINGATAN: Risiko LED terbakar! Terhubung langsung tanpa hambatan (resistor).");
+            errorLog.push("🔥 PERINGATAN: LED terhubung langsung tanpa resistor pembatas arus — Risiko Terbakar Tinggi!");
             leds.forEach(l => {
-               errorNodes[l.id] = "Risiko terbakar! Menerima daya langsung tanpa resistor pembatas arus.";
-               nodes_state[l.id] = { ledState: "burnt" };
+              errorNodes[l.id] = "Short Circuit! Pasang resistor pembatas arus segera.";
+              nodes_state[l.id] = { ledState: "burnt" };
             });
           }
         }

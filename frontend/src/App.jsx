@@ -145,7 +145,25 @@ function BatteryNode({ id, data, selected }) {
       <ErrorBadge data={data} />
       <Handle type="source" position={Position.Left} id="left" />
       <Handle type="source" position={Position.Right} id="right" />
-      <span className="node-emoji">{isAC ? "∿" : "⎓"}</span>
+      {/* SVG voltage source symbol */}
+      <div className="vsource-symbol">
+        {isAC ? (
+          <svg viewBox="0 0 48 48" width="48" height="48">
+            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2.5" fill="none"/>
+            {/* Sine wave */}
+            <path d="M 10 24 C 14 14, 18 14, 24 24 C 30 34, 34 34, 38 24" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round"/>
+          </svg>
+        ) : (
+          <svg viewBox="0 0 48 48" width="48" height="48">
+            <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="2.5" fill="none"/>
+            {/* + symbol */}
+            <line x1="24" y1="12" x2="24" y2="22" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            <line x1="19" y1="17" x2="29" y2="17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+            {/* – symbol */}
+            <line x1="19" y1="31" x2="29" y2="31" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+          </svg>
+        )}
+      </div>
       <div className="node-label">{data.label}</div>
       <div className="node-value" style={{ marginBottom: "4px" }}>
         <select value={data.sourceType || "dc"} onChange={(e) => updateNodeData(id, { sourceType: e.target.value, label: e.target.value === 'ac' ? 'AC Source' : 'DC Source' })} className="node-input nodrag" style={{ width: '60px' }}>
@@ -272,40 +290,96 @@ function CapacitorNode({ id, data, selected }) {
   );
 }
 
+// LED specs table
+const LED_SPECS = {
+  Red:    { vf: 2.0, ifMax: 20, glowColor: "239,68,68" },
+  Yellow: { vf: 2.1, ifMax: 20, glowColor: "234,179,8" },
+  Green:  { vf: 2.2, ifMax: 25, glowColor: "34,197,94" },
+  Blue:   { vf: 3.2, ifMax: 20, glowColor: "59,130,246" },
+  White:  { vf: 3.2, ifMax: 20, glowColor: "248,250,252" },
+};
+
 function LEDNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
-  const isBurnt = data.ledState === "burnt" || (data.hasError && data.errorMessage && data.errorMessage.includes("Burnout"));
-  const isDim = data.ledState === "dim";
+  const isBurnt = data.ledState === "burnt" || (data.hasError && data.errorMessage && data.errorMessage.toLowerCase().includes("terbakar"));
+  const isDim   = data.ledState === "dim";
   const isBright = data.ledState === "bright";
-  
-  let emoji = "💡";
-  if (isBurnt) emoji = "💨";
-  else if (data.color === "Blue") emoji = "💎";
-  else if (data.color === "Green") emoji = "🟢";
-  else if (data.color === "White") emoji = "⬜";
-  else if (data.color === "Yellow") emoji = "🟡";
-  else emoji = "🔴";
+  const isOff = !isBright && !isDim && !isBurnt;
 
-  // Specification map
-  const spec = {
-    Red: "2.0V",
-    Yellow: "2.1V",
-    Green: "2.2V",
-    Blue: "3.2V",
-    White: "3.2V"
-  }[data.color || "Red"];
+  const color = data.color || "Red";
+  const spec = LED_SPECS[color] || LED_SPECS.Red;
+  const gc = spec.glowColor; // rgb string
+
+  // SVG LED body – bulb shape with color fill
+  const ledFillColor = isBurnt ? "#6b7280" :
+    isOff   ? "#374151" :
+    isDim   ? `rgba(${gc},0.35)` :
+    /* bright */ `rgba(${gc},0.85)`;
+
+  const ledStrokeColor = isBurnt ? "#9ca3af" : `rgb(${gc})`;
+  const nodeGlowStyle = isBright
+    ? { boxShadow: `0 0 20px 6px rgba(${gc},0.55), 0 0 40px 10px rgba(${gc},0.25)` }
+    : isDim
+    ? { boxShadow: `0 0 8px 2px rgba(${gc},0.25)`, opacity: 0.75 }
+    : isOff
+    ? { filter: "grayscale(70%) brightness(0.55)", opacity: 0.65 }
+    : {};
 
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} led-node ${selected ? "selected" : ""} ${isBright ? "led-bright" : ""} ${isDim ? "led-dim" : ""} ${data.ledState === "off" ? "led-off" : ""}`}>
+    <div
+      className={`circuit-node ${data.isSuccess ? "success" : ""} led-node led-${color.toLowerCase()} ${selected ? "selected" : ""} ${isBurnt ? "led-burnt" : ""}`}
+      style={nodeGlowStyle}
+    >
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
       <FourWayHandles />
-      <span className="node-emoji">{emoji}</span>
+      {/* LED SVG symbol */}
+      <div className="led-symbol">
+        <svg viewBox="0 0 40 44" width="40" height="44">
+          {/* Bulb dome */}
+          <path d="M 8 24 A 12 12 0 1 1 32 24 L 32 30 Q 32 34 28 34 L 12 34 Q 8 34 8 30 Z"
+            fill={ledFillColor} stroke={ledStrokeColor} strokeWidth="2" />
+          {/* Flat base */}
+          <rect x="12" y="34" width="16" height="4" rx="1" fill={ledStrokeColor} opacity="0.7"/>
+          {/* Legs */}
+          <line x1="16" y1="38" x2="14" y2="44" stroke={ledStrokeColor} strokeWidth="2" strokeLinecap="round"/>
+          <line x1="24" y1="38" x2="26" y2="44" stroke={ledStrokeColor} strokeWidth="2" strokeLinecap="round"/>
+          {/* Triangle (diode symbol) */}
+          <polygon points="17,26 23,22 23,30" fill="white" opacity={isBright ? "0.9" : "0.4"}/>
+          <line x1="23" y1="21" x2="23" y2="31" stroke="white" strokeWidth="1.5" opacity={isBright ? "0.9" : "0.4"}/>
+          {/* Rays when bright */}
+          {isBright && (
+            <>
+              <line x1="34" y1="14" x2="38" y2="10" stroke={`rgb(${gc})`} strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+              <line x1="36" y1="20" x2="41" y2="18" stroke={`rgb(${gc})`} strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+              <line x1="6" y1="14" x2="2" y2="10" stroke={`rgb(${gc})`} strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+              <line x1="4" y1="20" x2="-1" y2="18" stroke={`rgb(${gc})`} strokeWidth="2" strokeLinecap="round" opacity="0.8"/>
+            </>
+          )}
+          {/* Burnt X */}
+          {isBurnt && (
+            <>
+              <line x1="16" y1="16" x2="24" y2="28" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="24" y1="16" x2="16" y2="28" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"/>
+            </>
+          )}
+        </svg>
+      </div>
       <div className="node-label">{data.label}</div>
-      <div style={{ fontSize: "0.6rem", color: "var(--text-muted)", marginBottom: "4px" }}>Spec: {spec}</div>
+      <div className="led-spec-row">
+        <span className="led-spec-badge" style={{ background: `rgba(${gc},0.15)`, color: `rgb(${gc})` }}>
+          Vf={spec.vf}V
+        </span>
+        <span className="led-spec-badge" style={{ background: `rgba(${gc},0.15)`, color: `rgb(${gc})` }}>
+          If≤{spec.ifMax}mA
+        </span>
+      </div>
+      <div className="led-state-label">
+        {isBurnt ? "🔥 TERBAKAR" : isDim ? "🌑 REDUP" : isBright ? "✨ MENYALA" : "⚫ MATI"}
+      </div>
       <div className="node-value">
         <select 
-          value={data.color || "Red"} 
+          value={color} 
           onChange={(e) => updateNodeData(id, { color: e.target.value })}
           className="node-input nodrag"
           style={{ width: "70px" }}
@@ -378,21 +452,34 @@ function SwitchNode({ id, data, selected }) {
       <ErrorBadge data={data} />
       <Handle type="source" position={Position.Left} id="left" />
       <Handle type="source" position={Position.Right} id="right" />
-      <div className="nodrag" onClick={toggleSwitch} style={{ cursor: "pointer", display: "inline-block", margin: "5px 0" }}>
-        <svg width="40" height="20" viewBox="0 0 40 20">
-          {/* Terminals */}
-          <circle cx="5" cy="10" r="3" fill="currentColor" />
-          <circle cx="35" cy="10" r="3" fill="currentColor" />
-          {/* Switch Lever */}
+      {/* SPST Switch SVG */}
+      <div className="nodrag switch-svg-wrap" onClick={toggleSwitch} title={isOn ? "Klik untuk buka (OFF)" : "Klik untuk tutup (ON)"}>
+        <svg width="72" height="36" viewBox="0 0 72 36">
+          {/* Left wire + terminal dot */}
+          <line x1="0" y1="18" x2="16" y2="18" stroke={isOn ? "#10b981" : "#94a3b8"} strokeWidth="2.5"/>
+          <circle cx="16" cy="18" r="3.5" fill={isOn ? "#10b981" : "#94a3b8"}/>
+          {/* Right wire + terminal dot */}
+          <line x1="56" y1="18" x2="72" y2="18" stroke={isOn ? "#10b981" : "#94a3b8"} strokeWidth="2.5"/>
+          <circle cx="56" cy="18" r="3.5" fill={isOn ? "#10b981" : "#94a3b8"}/>
+          {/* Lever */}
           {isOn ? (
-            <line x1="5" y1="10" x2="35" y2="10" stroke="currentColor" strokeWidth="3" />
+            /* Closed — horizontal lever */
+            <line x1="16" y1="18" x2="56" y2="18" stroke="#10b981" strokeWidth="3" strokeLinecap="round"/>
           ) : (
-            <line x1="5" y1="10" x2="30" y2="2" stroke="currentColor" strokeWidth="3" />
+            /* Open — lever angled up */
+            <line x1="16" y1="18" x2="50" y2="6" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round"/>
+          )}
+          {/* Arrow indicator when open */}
+          {!isOn && (
+            <polygon points="50,6 44,8 47,14" fill="#f59e0b" opacity="0.8"/>
           )}
         </svg>
       </div>
       <div className="node-label">{data.label}</div>
-      <div className="node-value" style={{ fontWeight: 'bold', color: isOn ? '#10b981' : '#ef4444' }}>{isOn ? "CLOSED" : "OPEN"}</div>
+      <div className="node-value" style={{ fontWeight: 'bold', color: isOn ? '#10b981' : '#f59e0b' }}>
+        {isOn ? "⬛ CLOSED (ON)" : "⬜ OPEN (OFF)"}
+      </div>
+      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '2px' }}>klik untuk toggle</div>
     </div>
   );
 }
@@ -560,21 +647,21 @@ const defaultEdges = [];
 
 const paletteItems = [
   // Active
-  { type: "battery", label: "Voltage Source", emoji: "⎓", voltage: 9, sourceType: "dc", category: "active" },
-  { type: "diode", label: "Diode", emoji: "▶️", category: "active" },
-  { type: "transistor", label: "Transistor", emoji: "⬛", transistorType: "npn", category: "active" },
-  { type: "led", label: "LED", emoji: "💡", color: "Red", category: "active" },
+  { type: "battery",     label: "Voltage Source",  emoji: "⎓",  voltage: 9, sourceType: "dc", category: "active",  badge: "Aktif" },
+  { type: "diode",       label: "Diode",            emoji: "▶️", category: "active",  badge: "Aktif" },
+  { type: "transistor",  label: "Transistor",       emoji: "⬛", transistorType: "npn", category: "active",  badge: "Aktif" },
+  { type: "led",         label: "LED",              emoji: "💡", color: "Red", category: "active",  badge: "Aktif" },
   // Passive
-  { type: "resistor", label: "Resistor", emoji: "⚡", resistance: 220, category: "passive" },
-  { type: "potentiometer", label: "Potentiometer", emoji: "🎛️", wiperPercent: 50, maxResistance: 10000, category: "passive" },
-  { type: "capacitor", label: "Capacitor", emoji: "🔵", capacitance: 100, capType: "elco", category: "passive" },
+  { type: "resistor",     label: "Resistor",        emoji: "⚡", resistance: 220, category: "passive", badge: "Pasif" },
+  { type: "potentiometer",label: "Potentiometer",   emoji: "🎛️", wiperPercent: 50, maxResistance: 10000, category: "passive", badge: "Pasif" },
+  { type: "capacitor",    label: "Capacitor",       emoji: "🔵", capacitance: 100, capType: "elco", category: "passive", badge: "Pasif" },
   // Output
-  { type: "motor", label: "DC Motor", emoji: "⚙️", ratedVoltage: 5, category: "output" },
-  { type: "buzzer", label: "Buzzer", emoji: "🔔", minVoltage: 3, category: "output" },
+  { type: "motor",   label: "DC Motor",  emoji: "⚙️", ratedVoltage: 5, category: "output" },
+  { type: "buzzer",  label: "Buzzer",    emoji: "🔔", minVoltage: 3,   category: "output" },
   // Control & Instruments
-  { type: "switch", label: "Switch", emoji: "🔴", state: "open", category: "control" },
-  { type: "multimeter", label: "Multimeter", emoji: "📟", mode: "V", category: "control" },
-  { type: "oscilloscope", label: "Oscilloscope", emoji: "📉", category: "control" },
+  { type: "switch",       label: "Switch",      emoji: "🔘", state: "open", category: "control" },
+  { type: "multimeter",   label: "Multimeter",  emoji: "📟", mode: "V",    category: "control" },
+  { type: "oscilloscope", label: "Oscilloscope",emoji: "📉",               category: "control" },
   // Wiring
   { type: "junction", label: "Junction", emoji: "⭕", category: "wiring" },
 ];
@@ -1056,6 +1143,11 @@ export default function App() {
                           >
                             <span className="sidebar-item-icon">{item.emoji}</span>
                             <span className="sidebar-item-label">{item.label}</span>
+                            {item.badge && (
+                              <span className={`component-badge badge-${item.badge === 'Aktif' ? 'active' : 'passive'}`}>
+                                {item.badge}
+                              </span>
+                            )}
                           </div>
                         ))}
                       </div>
