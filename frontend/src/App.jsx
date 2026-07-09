@@ -15,7 +15,9 @@ import {
   Handle,
   Position,
   useReactFlow,
+  useViewport,
   ConnectionMode,
+  getSmoothStepPath,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./index.css";
@@ -143,8 +145,7 @@ function BatteryNode({ id, data, selected }) {
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} battery-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <Handle type="source" position={Position.Left} id="left" />
-      <Handle type="source" position={Position.Right} id="right" />
+      <FourWayHandles />
       {/* SVG voltage source symbol */}
       <div className="vsource-symbol">
         {isAC ? (
@@ -164,6 +165,8 @@ function BatteryNode({ id, data, selected }) {
           </svg>
         )}
       </div>
+      <div className="pin-label pin-left" style={{ color: '#ef4444', fontSize: '1.2rem', left: '10px', fontWeight: 'bold' }}>+</div>
+      <div className="pin-label pin-right" style={{ color: '#3b82f6', fontSize: '1.4rem', right: '10px', fontWeight: 'bold' }}>-</div>
       <div className="node-label">{data.label}</div>
       <div className="node-value" style={{ marginBottom: "4px" }}>
         <select value={data.sourceType || "dc"} onChange={(e) => updateNodeData(id, { sourceType: e.target.value, label: e.target.value === 'ac' ? 'AC Source' : 'DC Source' })} className="node-input nodrag" style={{ width: '60px' }}>
@@ -174,9 +177,8 @@ function BatteryNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.voltage || 9} 
-          onChange={(e) => updateNodeData(id, { voltage: Number(e.target.value) })}
-          onFocus={(e) => e.target.select()}
+          value={data.voltage !== undefined ? data.voltage : 9} 
+          onChange={(e) => updateNodeData(id, { voltage: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />
         V
@@ -198,26 +200,24 @@ function getResistorBands(ohms) {
 
 function ResistorNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
-  const bands = getResistorBands(data.resistance || 220);
   return (
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} resistor-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
+      {/* 2 kaki: kiri dan kanan. Non-polar, tanpa label +/- */}
       <Handle type="source" position={Position.Left} id="left" />
       <Handle type="source" position={Position.Right} id="right" />
-      <div className="resistor-body nodrag">
-        <div className="resistor-band" style={{ backgroundColor: bands[0] }}></div>
-        <div className="resistor-band" style={{ backgroundColor: bands[1] }}></div>
-        <div className="resistor-band" style={{ backgroundColor: bands[2] }}></div>
-        <div className="resistor-band" style={{ backgroundColor: '#FFD700' }}></div>
+      <div className="resistor-body nodrag" style={{ background: 'transparent', border: 'none', height: 'auto', display: 'block', fontSize: '36px', color: '#8b5cf6', margin: '-5px 0 5px 0' }}>
+        <strong>Ω</strong>
       </div>
-      <div className="node-label">{data.label}</div>
+      <div className="node-label">
+        {data.resistance !== undefined ? `${data.resistance}\u03a9 Resistor` : 'Resistor'}
+      </div>
       <div className="node-value">
         <input 
           type="number" 
-          value={data.resistance || 220} 
-          onChange={(e) => updateNodeData(id, { resistance: Number(e.target.value) })}
-          onFocus={(e) => e.target.select()}
+          value={data.resistance !== undefined ? data.resistance : 220} 
+          onChange={(e) => updateNodeData(id, { resistance: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />
         Ω
@@ -241,7 +241,10 @@ function PotentiometerNode({ id, data, selected }) {
         <input 
           type="range" min="0" max="100" 
           value={data.wiperPercent || 50} 
-          onChange={(e) => updateNodeData(id, { wiperPercent: Number(e.target.value) })}
+          onChange={(e) => {
+            updateNodeData(id, { wiperPercent: Number(e.target.value) });
+            if (window.triggerSimulation) window.triggerSimulation();
+          }}
           className="nodrag custom-slider" style={{ width: '80px', marginTop: '4px' }}
         />
       </div>
@@ -268,14 +271,24 @@ function CapacitorNode({ id, data, selected }) {
           <div className="polar-label polar-minus">-</div>
         </>
       )}
-      <span className="node-emoji">{isExploded ? "💥" : (isElco ? "🛢️" : "🟠")}</span>
+      <div className="capacitor-svg" style={{ margin: "4px auto", color: "#3b82f6" }}>
+        <svg viewBox="0 0 40 24" width="40" height="24">
+          <line x1="0" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2.5"/>
+          <line x1="16" y1="4" x2="16" y2="20" stroke="currentColor" strokeWidth="2.5"/>
+          {isElco ? (
+            <path d="M 24 4 Q 20 12 24 20" fill="none" stroke="currentColor" strokeWidth="2.5"/>
+          ) : (
+            <line x1="24" y1="4" x2="24" y2="20" stroke="currentColor" strokeWidth="2.5"/>
+          )}
+          <line x1="24" y1="12" x2="40" y2="12" stroke="currentColor" strokeWidth="2.5"/>
+        </svg>
+      </div>
       <div className="node-label">{data.label} {isElco && !isExploded ? "(+/-)" : ""}</div>
       <div className="node-value">
         <input 
           type="number" 
-          value={data.capacitance || 100} 
-          onChange={(e) => updateNodeData(id, { capacitance: Number(e.target.value) })}
-          onFocus={(e) => e.target.select()}
+          value={data.capacitance !== undefined ? data.capacitance : 100} 
+          onChange={(e) => updateNodeData(id, { capacitance: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />
         {isElco ? "µF" : "nF"}
@@ -332,7 +345,11 @@ function LEDNode({ id, data, selected }) {
     >
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <FourWayHandles />
+      {/* 2 kaki: Anode (+) di kiri, Katode (-) di kanan */}
+      <Handle type="source" position={Position.Left} id="anode" />
+      <Handle type="source" position={Position.Right} id="cathode" />
+      <div className="pin-label pin-left" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem' }}>A+</div>
+      <div className="pin-label pin-right" style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.75rem' }}>K-</div>
       {/* LED SVG symbol */}
       <div className="led-symbol">
         <svg viewBox="0 0 40 44" width="40" height="44">
@@ -396,40 +413,83 @@ function LEDNode({ id, data, selected }) {
 }
 
 function DiodeNode({ id, data, selected }) {
+  const { updateNodeData } = useReactFlow();
   return (
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} diode-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
+      {/* 2 kaki: Anode (+) kiri, Katode (-) kanan */}
       <Handle type="source" position={Position.Left} id="anode" />
       <Handle type="source" position={Position.Right} id="cathode" />
-      <div className="pin-label pin-left">A</div>
-      <div className="pin-label pin-right">K</div>
+      <div className="pin-label pin-left" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem' }}>A+</div>
+      <div className="pin-label pin-right" style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.75rem' }}>K-</div>
       <div className="diode-body nodrag">
         <div className="diode-triangle"></div>
         <div className="diode-line"></div>
       </div>
       <div className="node-label">{data.label}</div>
-      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>1N4007</div>
+      <div className="node-value" style={{ marginTop: '4px' }}>
+        <select value={data.diodeType || "standard"} onChange={(e) => updateNodeData(id, { diodeType: e.target.value })} className="node-input nodrag" style={{ width: '85px' }}>
+          <option value="standard">Standard</option>
+          <option value="zener">Zener</option>
+          <option value="led">LED (Diode)</option>
+          <option value="photodiode">Photodiode</option>
+        </select>
+      </div>
     </div>
   );
 }
 
 function TransistorNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
+  const isNPN = (data.transistorType || 'npn') === 'npn';
   return (
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} transistor-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
+      {/* Base: kiri tengah */}
       <Handle type="source" position={Position.Left} id="base" style={{ top: '50%' }} />
+      {/* Collector: atas tengah */}
       <Handle type="source" position={Position.Top} id="collector" style={{ left: '50%' }} />
+      {/* Emitter: bawah tengah */}
       <Handle type="source" position={Position.Bottom} id="emitter" style={{ left: '50%' }} />
-      <div className="pin-label pin-left">B</div>
-      <div className="pin-label pin-top">C</div>
-      <div className="pin-label pin-bottom">E</div>
-      <span className="node-emoji">⬛</span>
+
+      {/* Pin badges — lebih besar dan jelas */}
+      <div style={{ position:'absolute', left:'-22px', top:'50%', transform:'translateY(-50%)',
+        background:'#854d0e', color:'#fef08a', fontSize:'0.65rem', fontWeight:'bold',
+        padding:'1px 4px', borderRadius:'4px', pointerEvents:'none' }}>B</div>
+      <div style={{ position:'absolute', top:'-20px', left:'50%', transform:'translateX(-50%)',
+        background:'#991b1b', color:'#fca5a5', fontSize:'0.65rem', fontWeight:'bold',
+        padding:'1px 4px', borderRadius:'4px', pointerEvents:'none' }}>C</div>
+      <div style={{ position:'absolute', bottom:'-20px', left:'50%', transform:'translateX(-50%)',
+        background:'#1e3a5f', color:'#93c5fd', fontSize:'0.65rem', fontWeight:'bold',
+        padding:'1px 4px', borderRadius:'4px', pointerEvents:'none' }}>E</div>
+
+      <div className="transistor-svg" style={{ margin: "4px auto", color: "#ec4899" }}>
+        <svg viewBox="0 0 40 40" width="44" height="44">
+          {/* Circle body */}
+          <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="2.5"/>
+          {/* Base line */}
+          <line x1="0" y1="20" x2="12" y2="20" stroke="currentColor" strokeWidth="2.5"/>
+          {/* Base bar */}
+          <line x1="12" y1="10" x2="12" y2="30" stroke="currentColor" strokeWidth="4"/>
+          {/* Collector (up-right) */}
+          <line x1="12" y1="13" x2="26" y2="3" stroke="currentColor" strokeWidth="2.5"/>
+          <line x1="26" y1="3" x2="26" y2="0" stroke="currentColor" strokeWidth="2.5"/>
+          {/* Emitter (down-right) */}
+          <line x1="12" y1="27" x2="26" y2="37" stroke="currentColor" strokeWidth="2.5"/>
+          <line x1="26" y1="37" x2="26" y2="40" stroke="currentColor" strokeWidth="2.5"/>
+          {/* Arrow on emitter (NPN: pointing away, PNP: pointing in) */}
+          {isNPN ? (
+            <polygon points="19,32 25,38 25,31" fill="currentColor"/>
+          ) : (
+            <polygon points="14,23 12,29 18,27" fill="currentColor"/>
+          )}
+        </svg>
+      </div>
       <div className="node-label">{data.label}</div>
       <div className="node-value">
-        <select value={data.transistorType || "npn"} onChange={(e) => updateNodeData(id, { transistorType: e.target.value })} className="node-input nodrag" style={{ width: '80px' }}>
+        <select value={data.transistorType || "npn"} onChange={(e) => updateNodeData(id, { transistorType: e.target.value })} className="node-input nodrag" style={{ width: '85px' }}>
           <option value="npn">NPN (BC547)</option>
           <option value="pnp">PNP (BC557)</option>
         </select>
@@ -444,14 +504,14 @@ function SwitchNode({ id, data, selected }) {
   
   const toggleSwitch = () => {
     updateNodeData(id, { state: isOn ? "open" : "closed" });
+    if (window.triggerSimulation) window.triggerSimulation();
   };
 
   return (
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} switch-node ${isOn ? "switch-closed" : "switch-open"} ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <Handle type="source" position={Position.Left} id="left" />
-      <Handle type="source" position={Position.Right} id="right" />
+      <FourWayHandles />
       {/* SPST Switch SVG */}
       <div className="nodrag switch-svg-wrap" onClick={toggleSwitch} title={isOn ? "Klik untuk buka (OFF)" : "Klik untuk tutup (ON)"}>
         <svg width="72" height="36" viewBox="0 0 72 36">
@@ -490,15 +550,20 @@ function MotorNode({ id, data, selected }) {
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} motor-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <FourWayHandles />
+      {/* 4 kaki: Top/Bottom/Left(+)/Right(-) dengan label polaritas */}
+      <Handle type="source" position={Position.Top} id="top" />
+      <Handle type="source" position={Position.Bottom} id="bottom" />
+      <Handle type="source" position={Position.Left} id="pos" />
+      <Handle type="source" position={Position.Right} id="neg" />
+      <div className="pin-label pin-left" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.9rem' }}>+</div>
+      <div className="pin-label pin-right" style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.9rem' }}>−</div>
       <span className="node-emoji">⚙️</span>
       <div className="node-label">{data.label}</div>
       <div className="node-value">
         <input 
           type="number" 
-          value={data.ratedVoltage || 5} 
-          onChange={(e) => updateNodeData(id, { ratedVoltage: Number(e.target.value) })}
-          onFocus={(e) => e.target.select()}
+          value={data.ratedVoltage !== undefined ? data.ratedVoltage : 5} 
+          onChange={(e) => updateNodeData(id, { ratedVoltage: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />
         V Motor
@@ -519,9 +584,8 @@ function BuzzerNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.minVoltage || 3} 
-          onChange={(e) => updateNodeData(id, { minVoltage: Number(e.target.value) })}
-          onFocus={(e) => e.target.select()}
+          value={data.minVoltage !== undefined ? data.minVoltage : 3} 
+          onChange={(e) => updateNodeData(id, { minVoltage: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />
         V min
@@ -548,8 +612,11 @@ function MultimeterNode({ id, data, selected }) {
     <div className={`circuit-node ${data.isSuccess ? "success" : ""} multimeter-node ${selected ? "selected" : ""}`}>
       <NodeDeleteButton id={id} />
       <ErrorBadge data={data} />
-      <Handle type="source" position={Position.Left} id="probe-red" style={{ top: '30%', background: '#ef4444', border: '2px solid white' }} />
-      <Handle type="source" position={Position.Left} id="probe-black" style={{ top: '70%', background: '#111827', border: '2px solid white' }} />
+      <Handle type="source" position={Position.Left} id="probe-red" style={{ top: '30%', background: '#ef4444', border: '2px solid white', width: '12px', height: '12px' }} />
+      <Handle type="source" position={Position.Left} id="probe-black" style={{ top: '70%', background: '#374151', border: '2px solid white', width: '12px', height: '12px' }} />
+      {/* Label probe */}
+      <div style={{ position:'absolute', left:'-18px', top:'26%', color:'#ef4444', fontSize:'0.8rem', fontWeight:'bold', pointerEvents:'none' }}>+</div>
+      <div style={{ position:'absolute', left:'-18px', top:'66%', color:'#9ca3af', fontSize:'0.8rem', fontWeight:'bold', pointerEvents:'none' }}>−</div>
       <div className="multimeter-screen nodrag">
         {data.reading !== undefined ? data.reading : "0.00"} {data.mode === 'V' ? 'V' : data.mode === 'A' ? 'mA' : 'Ω'}
       </div>
@@ -582,12 +649,56 @@ function OscilloscopeNode({ id, data, selected }) {
   );
 }
 
+function InductorNode({ id, data, selected }) {
+  const { updateNodeData } = useReactFlow();
+  return (
+    <div className={`circuit-node ${data.isSuccess ? "success" : ""} inductor-node ${selected ? "selected" : ""}`}>
+      <NodeDeleteButton id={id} />
+      <ErrorBadge data={data} />
+      {/* 2 kaki: kiri dan kanan. Non-polar, tanpa label +/- */}
+      <Handle type="source" position={Position.Left} id="left" />
+      <Handle type="source" position={Position.Right} id="right" />
+      <div className="inductor-svg" style={{ margin: "4px auto", color: "#f59e0b" }}>
+        <svg viewBox="0 0 50 20" width="50" height="20">
+          <path d="M 0 10 L 10 10 C 10 0, 20 0, 20 10 C 20 0, 30 0, 30 10 C 30 0, 40 0, 40 10 L 50 10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+      <div className="node-label">{data.label}</div>
+      <div className="node-value">
+        <input 
+          type="number" 
+          value={data.inductance !== undefined ? data.inductance : 100} 
+          onChange={(e) => updateNodeData(id, { inductance: e.target.value === '' ? '' : Number(e.target.value) })}
+          className="node-input nodrag"
+        />
+        mH
+      </div>
+    </div>
+  );
+}
+
+// Custom Edge for Jump Crossings
+function JumpEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style = {}, markerEnd, animated }) {
+  const [edgePath] = getSmoothStepPath({
+    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
+    borderRadius: 0,
+  });
+
+  return (
+    <>
+      <path id={id} className="react-flow__edge-path" d={edgePath} markerEnd={markerEnd} fillRule="evenodd" />
+      <path className={`react-flow__edge-path-inner ${animated ? 'animated' : ''}`} d={edgePath} style={style} fillRule="evenodd" />
+    </>
+  );
+}
+
 // Register custom node types
 const nodeTypes = {
   battery: BatteryNode,
   resistor: ResistorNode,
   potentiometer: PotentiometerNode,
   capacitor: CapacitorNode,
+  inductor: InductorNode,
   led: LEDNode,
   diode: DiodeNode,
   transistor: TransistorNode,
@@ -597,6 +708,10 @@ const nodeTypes = {
   junction: WireJunctionNode,
   multimeter: MultimeterNode,
   oscilloscope: OscilloscopeNode,
+};
+
+const edgeTypes = {
+  jumpEdge: JumpEdge,
 };
 
 // ============================================
@@ -655,6 +770,7 @@ const paletteItems = [
   { type: "resistor",     label: "Resistor",        emoji: "⚡", resistance: 220, category: "passive", badge: "Pasif" },
   { type: "potentiometer",label: "Potentiometer",   emoji: "🎛️", wiperPercent: 50, maxResistance: 10000, category: "passive", badge: "Pasif" },
   { type: "capacitor",    label: "Capacitor",       emoji: "🔵", capacitance: 100, capType: "elco", category: "passive", badge: "Pasif" },
+  { type: "inductor",     label: "Inductor",        emoji: "➰", inductance: 100, category: "passive", badge: "Pasif" },
   // Output
   { type: "motor",   label: "DC Motor",  emoji: "⚙️", ratedVoltage: 5, category: "output" },
   { type: "buzzer",  label: "Buzzer",    emoji: "🔔", minVoltage: 3,   category: "output" },
@@ -852,16 +968,132 @@ function TutorPanel({ response, isLoading, t, onSuggestionClick }) {
 }
 
 // ============================================
+// HUMP OVERLAY COMPONENT
+// ============================================
+
+function HumpOverlay({ intersections, isRunning }) {
+  const { x, y, zoom } = useViewport();
+  
+  return (
+    <div style={{
+      position: 'absolute',
+      left: 0, top: 0, width: '100%', height: '100%',
+      pointerEvents: 'none',
+      zIndex: 1000,
+      transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+      transformOrigin: '0 0'
+    }}>
+      {intersections.map((int, i) => (
+        <svg 
+          key={i}
+          style={{ position: 'absolute', left: int.x - 12, top: int.y - 12, width: 24, height: 24, overflow: 'visible' }}
+        >
+          {/* Mask for the vertical line */}
+          <rect x="8" y="0" width="8" height="24" fill="var(--react-flow-bg)" />
+          {/* Re-draw vertical line */}
+          <line x1="12" y1="0" x2="12" y2="24" stroke="#00d4ff" strokeWidth="2.5" className={isRunning ? "animated reverse-animation" : ""} />
+          
+          {/* Mask for horizontal line */}
+          <rect x="0" y="8" width="24" height="8" fill="var(--react-flow-bg)" />
+          {/* Draw horizontal hump */}
+          <path d="M 0 12 L 4 12 A 8 8 0 0 1 20 12 L 24 12" fill="none" stroke="#00d4ff" strokeWidth="2.5" className={isRunning ? "animated reverse-animation" : ""} />
+        </svg>
+      ))}
+    </div>
+  );
+}
+
+// ============================================
 // MAIN APP COMPONENT
 // ============================================
 
 let nodeIdCounter = 4; // Start after default 3 nodes
+
+function getSidebarIcon(type) {
+  const style = { width: '22px', height: '22px', display: 'block', color: 'currentColor' };
+  switch(type) {
+    case 'battery':
+      return (
+        <svg viewBox="0 0 48 48" style={style}>
+          <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none"/>
+          <line x1="24" y1="12" x2="24" y2="22" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          <line x1="19" y1="17" x2="29" y2="17" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          <line x1="19" y1="31" x2="29" y2="31" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+        </svg>
+      );
+    case 'resistor':
+      return <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#8b5cf6', lineHeight: '22px' }}>Ω</div>;
+    case 'capacitor':
+      return (
+        <svg viewBox="0 0 40 24" style={{...style, color: '#3b82f6'}}>
+          <line x1="0" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="3"/>
+          <line x1="16" y1="4" x2="16" y2="20" stroke="currentColor" strokeWidth="3"/>
+          <line x1="24" y1="4" x2="24" y2="20" stroke="currentColor" strokeWidth="3"/>
+          <line x1="24" y1="12" x2="40" y2="12" stroke="currentColor" strokeWidth="3"/>
+        </svg>
+      );
+    case 'transistor':
+      return (
+        <svg viewBox="0 0 40 40" style={style}>
+          <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="3"/>
+          <line x1="0" y1="20" x2="12" y2="20" stroke="currentColor" strokeWidth="3"/>
+          <line x1="12" y1="10" x2="12" y2="30" stroke="currentColor" strokeWidth="4"/>
+          <line x1="12" y1="14" x2="24" y2="4" stroke="currentColor" strokeWidth="3"/>
+          <line x1="24" y1="4" x2="24" y2="0" stroke="currentColor" strokeWidth="3"/>
+          <line x1="12" y1="26" x2="24" y2="36" stroke="currentColor" strokeWidth="3"/>
+          <line x1="24" y1="36" x2="24" y2="40" stroke="currentColor" strokeWidth="3"/>
+          <polygon points="18,31 23,36 24,30" fill="currentColor"/>
+        </svg>
+      );
+    case 'inductor':
+      return (
+        <svg viewBox="0 0 50 20" style={{...style, color: '#f59e0b', width: '28px'}}>
+          <path d="M 0 10 L 10 10 C 10 0, 20 0, 20 10 C 20 0, 30 0, 30 10 C 30 0, 40 0, 40 10 L 50 10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
+    case 'diode':
+      return (
+        <svg viewBox="0 0 30 30" style={style}>
+          <polygon points="10,10 10,20 20,15" fill="none" stroke="currentColor" strokeWidth="2"/>
+          <line x1="20" y1="10" x2="20" y2="20" stroke="currentColor" strokeWidth="2"/>
+        </svg>
+      );
+    case 'led':
+      return (
+        <svg viewBox="0 0 40 44" style={style}>
+          <path d="M 8 24 A 12 12 0 1 1 32 24 L 32 30 Q 32 34 28 34 L 12 34 Q 8 34 8 30 Z" fill="#374151" stroke="currentColor" strokeWidth="2" />
+          <rect x="12" y="34" width="16" height="4" rx="1" fill="currentColor" opacity="0.7"/>
+          <line x1="16" y1="38" x2="14" y2="44" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="24" y1="38" x2="26" y2="44" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      );
+    case 'potentiometer': return <span style={{fontSize: '18px'}}>🎛️</span>;
+    case 'motor': return <span style={{fontSize: '18px'}}>⚙️</span>;
+    case 'buzzer': return <span style={{fontSize: '18px'}}>🔔</span>;
+    case 'switch':
+      return (
+        <svg width="24" height="12" viewBox="0 0 72 36" style={{...style, width: '28px'}}>
+          <circle cx="12" cy="18" r="4" fill="currentColor"/>
+          <circle cx="60" cy="18" r="4" fill="currentColor"/>
+          <line x1="0" y1="18" x2="8" y2="18" stroke="currentColor" strokeWidth="4"/>
+          <line x1="64" y1="18" x2="72" y2="18" stroke="currentColor" strokeWidth="4"/>
+          <line x1="12" y1="18" x2="52" y2="6" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
+        </svg>
+      );
+    case 'multimeter': return <span style={{fontSize: '18px'}}>📟</span>;
+    case 'oscilloscope': return <span style={{fontSize: '18px'}}>📈</span>;
+    case 'junction': return <span style={{fontSize: '18px'}}>🔗</span>;
+    default: return <span style={{fontSize: '18px'}}>⚡</span>;
+  }
+}
 
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
   const [response, setResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
+  const [intersections, setIntersections] = useState([]);
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -916,8 +1148,9 @@ export default function App() {
         addEdge(
           {
             ...params,
-            animated: true,
-            style: { stroke: "#00d4ff", strokeWidth: 2.5 },
+            type: "jumpEdge",
+            className: `jump-edge ${isRunning ? "animated reverse-animation" : ""}`,
+            style: { stroke: "#00d4ff", borderRadius: 0 },
           },
           eds
         )
@@ -982,6 +1215,64 @@ export default function App() {
   };
 
   // Run Simulation - send circuit to backend
+  // Calculate wire intersections for humps
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const paths = document.querySelectorAll('.react-flow__edge-path-inner');
+      const segs = [];
+      paths.forEach(p => {
+        const d = p.getAttribute('d');
+        if (!d) return;
+        const parts = d.match(/[ML]\s*[-0-9.]+[,\s]+[-0-9.]+/g);
+        if (!parts) return;
+        let prevX, prevY;
+        parts.forEach(part => {
+          const cleanPart = part.replace(/[ML]/g, ' ').trim().replace(/,/g, ' ');
+          const tokens = cleanPart.split(/\s+/);
+          if (tokens.length < 2) return;
+          const px = parseFloat(tokens[tokens.length-2]);
+          const py = parseFloat(tokens[tokens.length-1]);
+          if (part.includes('M')) {
+            prevX = px; prevY = py;
+          } else if (part.includes('L')) {
+            segs.push({ x1: prevX, y1: prevY, x2: px, y2: py });
+            prevX = px; prevY = py;
+          }
+        });
+      });
+
+      const horizontals = [];
+      const verticals = [];
+      segs.forEach(s => {
+        if (Math.abs(s.y1 - s.y2) < 0.5) horizontals.push({ y: s.y1, xMin: Math.min(s.x1, s.x2), xMax: Math.max(s.x1, s.x2) });
+        else if (Math.abs(s.x1 - s.x2) < 0.5) verticals.push({ x: s.x1, yMin: Math.min(s.y1, s.y2), yMax: Math.max(s.y1, s.y2) });
+      });
+
+      const ints = [];
+      horizontals.forEach(h => {
+        verticals.forEach(v => {
+          if (v.x > h.xMin + 1 && v.x < h.xMax - 1 && h.y > v.yMin + 1 && h.y < v.yMax - 1) {
+            ints.push({ x: v.x, y: h.y });
+          }
+        });
+      });
+      
+      // Remove duplicates
+      const uniqueInts = [];
+      const seen = new Set();
+      ints.forEach(int => {
+        const key = `${Math.round(int.x)},${Math.round(int.y)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          uniqueInts.push(int);
+        }
+      });
+      
+      setIntersections(uniqueInts);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [nodes, edges]);
+
   const handleSimulate = async () => {
     setIsLoading(true);
     setResponse(null);
@@ -1042,16 +1333,63 @@ export default function App() {
       });
     } finally {
       setIsLoading(false);
+      setIsRunning(true);
     }
   };
 
-  // Reset circuit to defaults
+  const simulateRef = useRef(handleSimulate);
+  useEffect(() => {
+    simulateRef.current = handleSimulate;
+  });
+
+  // Manual trigger for real-time controls (e.g., potentiometer)
+  useEffect(() => {
+    window.triggerSimulation = () => {
+      if (isRunning) {
+        // debounce slightly to prevent spamming
+        clearTimeout(window.simTimer);
+        window.simTimer = setTimeout(() => {
+          simulateRef.current();
+        }, 100);
+      }
+    };
+  }, [isRunning]);
+
+  // Update edge animation state when isRunning changes
+  useEffect(() => {
+    setEdges((eds) => 
+      eds.map((e) => ({
+        ...e,
+        className: `jump-edge ${isRunning ? "animated reverse-animation" : ""}`,
+      }))
+    );
+  }, [isRunning]);
+
+  const handleStop = () => {
+    setIsRunning(false);
+    setResponse(null);
+    setNodes((nds) =>
+      nds.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          hasError: false,
+          errorMessage: null,
+          isSuccess: false,
+          ledState: "off",
+        },
+      }))
+    );
+  };
+
+  // Reset circuit — kosongkan kanvas sepenuhnya
   const handleReset = () => {
-    // Clear errors from nodes
-    setNodes(defaultNodes.map(n => ({...n, data: {...n.data, hasError: false, errorMessage: null, isSuccess: false}})));
+    handleStop();
+    setNodes([]);
     setEdges([]);
     setResponse(null);
-    nodeIdCounter = 4;
+    setIntersections([]);
+    nodeIdCounter = 1;
   };
 
   // Inject the error click handler into every node's data before passing to ReactFlow
@@ -1064,7 +1402,7 @@ export default function App() {
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${isRunning ? "is-running" : ""}`}>
       {/* ---- Header ---- */}
       <header className="app-header">
         <div className="header-brand">
@@ -1141,7 +1479,9 @@ export default function App() {
                             draggable
                             onDragStart={(e) => onDragStart(e, item)}
                           >
-                            <span className="sidebar-item-icon">{item.emoji}</span>
+                            <span className="sidebar-item-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {getSidebarIcon(item.type)}
+                            </span>
                             <span className="sidebar-item-label">{item.label}</span>
                             {item.badge && (
                               <span className={`component-badge badge-${item.badge === 'Aktif' ? 'active' : 'passive'}`}>
@@ -1187,16 +1527,19 @@ export default function App() {
               onDrop={onDrop}
               onDragOver={onDragOver}
               nodeTypes={memoizedNodeTypes}
+              edgeTypes={edgeTypes}
               connectionMode={ConnectionMode.Loose}
+              connectionRadius={40}
               fitView
               proOptions={{ hideAttribution: true }}
               defaultEdgeOptions={{
-                animated: true,
-                type: "smoothstep",
-                style: { stroke: "#00d4ff", strokeWidth: 2.5 },
+                type: "jumpEdge",
+                className: "jump-edge",
+                style: { stroke: "#00d4ff", borderRadius: 0 },
               }}
             >
               <Background gap={20} size={1} />
+              <HumpOverlay intersections={intersections} isRunning={isRunning} />
               <Controls />
               <MiniMap nodeBorderRadius={8} />
             </ReactFlow>
@@ -1206,14 +1549,19 @@ export default function App() {
           <div className="action-bar">
             <button
               id="btn-simulate"
-              className={`btn-simulate ${isLoading ? "loading" : ""}`}
-              onClick={handleSimulate}
+              className={`btn-simulate ${isLoading ? "loading" : ""} ${isRunning ? "btn-stop" : ""}`}
+              onClick={isRunning ? handleStop : handleSimulate}
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
                   <div className="spinner"></div>
                   {t.analyzing}
+                </>
+              ) : isRunning ? (
+                <>
+                  <span className="btn-icon">⏹</span>
+                  STOP SIMULATION
                 </>
               ) : (
                 <>

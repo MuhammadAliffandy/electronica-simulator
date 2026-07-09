@@ -58,6 +58,7 @@ function validateCircuit(nodes, edges) {
   const pots = nodes.filter((n) => n.data?.componentType === "potentiometer" || n.type === "potentiometer");
   const diodes = nodes.filter((n) => n.data?.componentType === "diode" || n.type === "diode");
   const transistors = nodes.filter((n) => n.data?.componentType === "transistor" || n.type === "transistor");
+  const inductors = nodes.filter((n) => n.data?.componentType === "inductor" || n.type === "inductor");
 
   if (nodes.length < 2) {
     errorLog.push("❌ Sebuah rangkaian membutuhkan setidaknya 2 komponen.");
@@ -119,20 +120,59 @@ function validateCircuit(nodes, edges) {
     });
 
     if (hasLoop) {
-      // ── HITUNG TOTAL HAMBATAN ──────────────────────────────────────────
+      // ── HITUNG TOTAL HAMBATAN (DETEKSI SERI & PARALEL) ───────────────
       let resistorDetails = [];
       let totalResistance = 0;
 
-      resistors.forEach((r, i) => {
-        const rVal = r.data?.resistance || 220;
-        totalResistance += rVal;
-        resistorDetails.push({ label: `R${i + 1}`, value: rVal, unit: "Ω" });
+      // Kelompokkan resistor berdasarkan node yang sama (paralel = terhubung ke 2 node yang sama)
+      const resistorGroups = {};
+      resistors.forEach((r) => {
+        const rEdges = edges.filter(e => e.source === r.id || e.target === r.id);
+        const connectedNodes = rEdges
+          .map(e => e.source === r.id ? e.target : e.source)
+          .sort();
+        const key = connectedNodes.join(',');
+        if (!resistorGroups[key]) resistorGroups[key] = [];
+        resistorGroups[key].push(r);
+      });
+
+      let groupIndex = 0;
+      const parallelGroupDetails = [];
+      Object.values(resistorGroups).forEach(group => {
+        groupIndex++;
+        if (group.length === 1) {
+          const rVal = group[0].data?.resistance || 220;
+          totalResistance += rVal;
+          resistorDetails.push({ label: `R${groupIndex}`, value: rVal, unit: 'Ω', isParallel: false });
+          parallelGroupDetails.push({ type: 'series', label: `R${groupIndex}`, equiv: rVal, resistors: group });
+        } else {
+          // Paralel: 1/Req = 1/R1 + 1/R2 + ...
+          const invSum = group.reduce((acc, r) => acc + 1 / (r.data?.resistance || 220), 0);
+          const Req = 1 / invSum;
+          totalResistance += Req;
+          const labels = group.map((r, i) => `R${groupIndex}${String.fromCharCode(97+i)}`).join('‖');
+          resistorDetails.push({ label: labels, value: Req, unit: 'Ω', isParallel: true, components: group });
+          parallelGroupDetails.push({ type: 'parallel', label: labels, equiv: Req, resistors: group });
+        }
       });
 
       pots.forEach((p, i) => {
         const effectiveR = ((p.data?.maxResistance || 10000) * (p.data?.wiperPercent || 50)) / 100;
         totalResistance += effectiveR;
-        resistorDetails.push({ label: `Pot${i + 1}`, value: effectiveR, unit: "Ω" });
+        resistorDetails.push({ label: `Pot${i + 1}`, value: effectiveR, unit: 'Ω', isParallel: false });
+      });
+
+      inductors.forEach((ind, i) => {
+        resistorDetails.push({ label: `L${i + 1} (DC Short)`, value: 0, unit: 'Ω' });
+      });
+
+      // Log resistor topology
+      parallelGroupDetails.forEach(g => {
+        if (g.type === 'parallel') {
+          const formula = g.resistors.map(r => `${r.data?.resistance||220}`).join(' + ');
+          const invFormula = g.resistors.map(r => `1/${r.data?.resistance||220}`).join(' + ');
+          analysisLog.push(`🔀 Resistor PARALEL (${g.label}): 1/Req = ${invFormula} → Req = ${g.equiv.toFixed(2)}Ω`);
+        }
       });
 
       // ── HITUNG TEGANGAN JATUH (VOLTAGE DROP) ──────────────────────────
@@ -143,40 +183,162 @@ function validateCircuit(nodes, edges) {
         Blue:   { vf: 3.2, ifMax: 20 },
         White:  { vf: 3.2, ifMax: 20 },
       };
-
       let totalVoltageDrop = 0;
       let dropDetails = [];
 
-      if (diodes.length > 0) {
-        totalVoltageDrop += diodes.length * 0.7;
-        dropDetails.push(`Dioda × ${diodes.length} = ${(diodes.length * 0.7).toFixed(1)}V (masing-masing 0.7V)`);
-      }
-
-      leds.forEach((l, i) => {
-        const color = l.data?.color || "Red";
-        const spec = ledSpecs[color] || ledSpecs.Red;
-        totalVoltageDrop += spec.vf;
-        dropDetails.push(`LED ${color} #${i + 1}: Vf = ${spec.vf}V`);
+      // ── CEK ARAH DIODA ────────────────────────────────────────────────
+      let diodeBlocked = false;
+      diodes.forEach((d, i) => {
+        const dEdges = edges.filter(e => e.source === d.id || e.target === d.id);
+        // Cek apakah ada koneksi ke anode dan cathode
+        const anodeEdge = dEdges.find(e => 
+          (e.source === d.id && e.sourceHandle === 'anode') ||
+          (e.target === d.id && e.targetHandle === 'anode')
+        );
+        const cathodeEdge = dEdges.find(e =>
+          (e.source === d.id && e.sourceHandle === 'cathode') ||
+          (e.target === d.id && e.targetHandle === 'cathode')
+        );
+        if (!anodeEdge || !cathodeEdge) {
+          // Handle jika pakai FourWayHandles / sambungan umum
+          // Asumsikan forward bias jika terhubung lengkap
+          totalVoltageDrop += 0.7;
+          dropDetails.push(`Dioda #${i+1}: Vf = 0.7V (forward bias)`);
+        } else {
+          // Cek polaritas: telusuri BFS dari baterai ke node anode vs cathode
+          // Simplified: anode side connected to battery+ side = forward
+          const anodeNode = anodeEdge.source === d.id ? anodeEdge.target : anodeEdge.source;
+          const cathodeNode = cathodeEdge.source === d.id ? cathodeEdge.target : cathodeEdge.source;
+          
+          // BFS dari battery positive
+          const batteryNode = batteries[0];
+          if (batteryNode) {
+            const visited = new Set();
+            const queue = [batteryNode.id];
+            visited.add(batteryNode.id);
+            let reachesAnode = false;
+            let reachesCathode = false;
+            while (queue.length > 0) {
+              const cur = queue.shift();
+              if (cur === anodeNode) reachesAnode = true;
+              if (cur === cathodeNode) reachesCathode = true;
+              (adj[cur] || []).forEach(neighbor => {
+                if (!visited.has(neighbor.node) && neighbor.node !== d.id) {
+                  visited.add(neighbor.node);
+                  queue.push(neighbor.node);
+                }
+              });
+            }
+            if (reachesAnode && !reachesCathode) {
+              // Forward bias
+              totalVoltageDrop += 0.7;
+              dropDetails.push(`Dioda #${i+1}: Forward Bias → Vf = 0.7V`);
+            } else if (reachesCathode && !reachesAnode) {
+              // Reverse bias — blokir arus
+              diodeBlocked = true;
+              errorLog.push(`🔴 Dioda #${i+1}: REVERSE BIAS — Dioda dipasang terbalik! Arus diblokir.`);
+              errorNodes[d.id] = `Dioda terpasang terbalik (Reverse Bias). Tukar sambungan A+ dan K-.`;
+            } else {
+              // Tidak bisa dipastikan, asumsikan forward
+              totalVoltageDrop += 0.7;
+              dropDetails.push(`Dioda #${i+1}: Vf = 0.7V`);
+            }
+          } else {
+            totalVoltageDrop += 0.7;
+            dropDetails.push(`Dioda #${i+1}: Vf = 0.7V`);
+          }
+        }
       });
+
+      if (diodeBlocked) {
+        hasLoop = false;
+        analysisLog.push("❌ Rangkaian diblokir oleh dioda yang terpasang terbalik.");
+      }
 
       let effectiveVoltage = voltage - totalVoltageDrop;
       if (effectiveVoltage < 0) effectiveVoltage = 0;
 
-      // ── CEK TRANSISTOR ─────────────────────────────────────────────────
+      // ── CEK & HITUNG TRANSISTOR ────────────────────────────────────────
       let transBlocked = false;
       transistors.forEach(t => {
         const conns = adj[t.id] || [];
-        const hasBase = conns.some(c => c.fromPin === 'base');
+        const isNPN = (t.data?.transistorType || 'npn') === 'npn';
+        const hFE = isNPN ? 200 : 100; // typical hFE BC547 / BC557
+
+        // Cek apakah basis terhubung
+        const hasBase = conns.some(c => c.fromPin === 'base' || c.toPin === 'base');
+        const hasCollector = conns.some(c => c.fromPin === 'collector' || c.toPin === 'collector');
+        const hasEmitter = conns.some(c => c.fromPin === 'emitter' || c.toPin === 'emitter');
+
         if (!hasBase) {
           transBlocked = true;
-          errorLog.push(`⬛ Transistor MATI: Pin basis tidak terhubung. Arus diblokir.`);
-          errorNodes[t.id] = "Transistor MATI. Basis butuh koneksi.";
+          errorLog.push(`⬛ Transistor ${isNPN ? 'NPN' : 'PNP'} MATI: Pin Basis (B) tidak terhubung. Arus diblokir.`);
+          errorNodes[t.id] = `Transistor MATI. Pin B (Basis) belum terhubung ke rangkaian.`;
+          return;
+        }
+
+        if (!hasCollector) {
+          errorLog.push(`⚠️ Transistor: Pin Collector (C) tidak terhubung.`);
+          errorNodes[t.id] = `Pin C (Collector) belum terhubung.`;
+        }
+        if (!hasEmitter) {
+          errorLog.push(`⚠️ Transistor: Pin Emitter (E) tidak terhubung.`);
+          errorNodes[t.id] = `Pin E (Emitter) belum terhubung.`;
+        }
+
+        if (hasBase && hasCollector && hasEmitter) {
+          // Hitung resistor yang terhubung ke basis untuk estimasi IB
+          // Cari resistor yang bersebelahan dengan transistor (melalui basis)
+          const baseNeighbors = conns.filter(c => c.fromPin === 'base' || c.toPin === 'base');
+          let Rb = 0;
+          baseNeighbors.forEach(neighbor => {
+            const neighborNode = nodes.find(n => n.id === neighbor.node);
+            if (neighborNode && (neighborNode.type === 'resistor' || neighborNode.data?.componentType === 'resistor')) {
+              Rb += (neighborNode.data?.resistance || 10000);
+            }
+          });
+
+          // Hitung IB: jika ada resistor basis, IB = (Vs - Vbe) / Rb
+          const Vbe = 0.7; // tegangan basis-emiter standar
+          const VbeStr = `${Vbe}V`;
+          let IB_mA = 0;
+          let IBFormula = '';
+
+          if (Rb > 0) {
+            IB_mA = ((voltage - Vbe) / Rb) * 1000;
+            IBFormula = `IB = (Vs - Vbe) / Rb = (${voltage}V - ${VbeStr}) / ${Rb}Ω = ${IB_mA.toFixed(3)} mA`;
+          } else {
+            // Tidak ada resistor basis terdeteksi, estimasi dari tegangan
+            IB_mA = ((voltage - Vbe) / 1000) * 1000; // asumsi Rb = 1kΩ default
+            IBFormula = `IB ≈ (Vs - Vbe) / 1kΩ (asumsi) = ${IB_mA.toFixed(3)} mA`;
+          }
+
+          // IC = hFE × IB
+          const IC_mA = hFE * IB_mA;
+          const ICsat_mA = (effectiveVoltage / Math.max(totalResistance, 10)) * 1000; // IC saat saturasi
+          const isSaturated = IC_mA >= ICsat_mA;
+
+          analysisLog.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+          analysisLog.push(`🔬 ANALISIS TRANSISTOR ${isNPN ? 'NPN' : 'PNP'} (${isNPN ? 'BC547' : 'BC557'})`);
+          analysisLog.push(`📌 Parameter: hFE = ${hFE}, Vbe = ${VbeStr}`);
+          analysisLog.push(`📌 Langkah 1 — Arus Basis: ${IBFormula}`);
+          analysisLog.push(`📌 Langkah 2 — Arus Kolektor: IC = hFE × IB = ${hFE} × ${IB_mA.toFixed(3)}mA = ${IC_mA.toFixed(2)} mA`);
+          if (totalResistance > 0) {
+            analysisLog.push(`📌 Langkah 3 — IC saturasi: IC(sat) = Veff / Rc = ${effectiveVoltage.toFixed(2)}V / ${totalResistance.toFixed(1)}Ω = ${ICsat_mA.toFixed(2)} mA`);
+          }
+          analysisLog.push(`📌 Status Transistor: ${isSaturated ? '🟢 SATURASI — transistor ON penuh, arus mengalir maksimum' : '🟡 AKTIF (Linear) — transistor menguat, IC = hFE × IB'}`);
+
+          if (isSaturated) {
+            analysisLog.push(`✅ Transistor dalam kondisi SATURASI. Arus kolektor ≈ ${ICsat_mA.toFixed(2)} mA.`);
+          } else {
+            analysisLog.push(`✅ Transistor dalam kondisi AKTIF. Arus kolektor = ${IC_mA.toFixed(2)} mA.`);
+          }
         }
       });
 
       if (transBlocked) {
         hasLoop = false;
-        analysisLog.push("❌ Rangkaian terblokir oleh transistor yang mati.");
+        analysisLog.push("❌ Rangkaian terblokir oleh transistor yang tidak aktif.");
       }
 
       if (hasLoop) {
@@ -278,6 +440,32 @@ function validateCircuit(nodes, edges) {
             });
           }
         }
+
+        // ── MULTIMETER READINGS ────────────────────────────────────────
+        const multimeters = nodes.filter(n => n.data?.componentType === 'multimeter' || n.type === 'multimeter');
+        multimeters.forEach(m => {
+          const mode = m.data?.mode || 'V';
+          const mEdges = edges.filter(e => e.source === m.id || e.target === m.id);
+          if (mEdges.length >= 2 && totalResistance > 0) {
+            const currentMaLocal = (effectiveVoltage / totalResistance) * 1000;
+            if (mode === 'V') {
+              const reading = effectiveVoltage.toFixed(2);
+              nodes_state[m.id] = { reading, mode: 'V' };
+              analysisLog.push(`📟 Multimeter (Voltmeter): Tegangan terukur = ${reading} V`);
+            } else if (mode === 'A') {
+              const reading = currentMaLocal.toFixed(2);
+              nodes_state[m.id] = { reading, mode: 'A' };
+              analysisLog.push(`📟 Multimeter (Ammeter): Arus terukur = ${reading} mA`);
+            } else if (mode === 'Ohm') {
+              const reading = totalResistance.toFixed(1);
+              nodes_state[m.id] = { reading, mode: 'Ohm' };
+              analysisLog.push(`📟 Multimeter (Ohmmeter): Hambatan terukur = ${reading} Ω`);
+            }
+          } else if (mEdges.length < 2) {
+            nodes_state[m.id] = { reading: '---', mode };
+            analysisLog.push(`📟 Multimeter: Belum tersambung ke 2 titik di rangkaian.`);
+          }
+        });
       }
     }
   }
@@ -578,14 +766,15 @@ app.post("/api/evaluate-circuit", async (req, res) => {
       api_status: "ACTIVE",
       analysis_log: [
         ...validationResult.analysisLog,
-        `🤖 AI Provider: ${source}`,
-      ],
+        // Tampilkan sumber AI hanya jika bukan mock, atau ganti labelnya
+        source !== 'mock' ? `🤖 Tutor AI: ${source.toUpperCase()}` : null,
+      ].filter(Boolean),
       ai_insights: {
-        greeting: insights.greeting || "Hello, circuit builder!",
-        explanation: insights.explanation || "Let me analyze your circuit...",
-        hint: insights.hint || "Try connecting all components in a loop!",
+        greeting: insights.greeting || "Halo, pelajar rangkaian!",
+        explanation: insights.explanation || "Mari analisis rangkaianmu...",
+        hint: insights.hint || "Coba sambungkan semua komponen dalam satu loop!",
         suggestion_button_text:
-          insights.suggestion_button_text || "Need more help? 🤔",
+          insights.suggestion_button_text || "Butuh bantuan? 🤔",
       },
       error_log: validationResult.errorLog,
       error_nodes: validationResult.errorNodes,
