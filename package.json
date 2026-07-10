@@ -21,8 +21,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "com.aliffandy.electronicasimulator",
-    "productName": "Electronica Simulator",
+    "appId": "com.aliffandy.elvo",
+    "productName": "ELVO",
     "directories": {
       "output": "dist-electron"
     },
