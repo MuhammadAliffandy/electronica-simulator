@@ -1,18 +1,14 @@
+import { BaseNode } from "./BaseNode";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
 
 export function TransistorNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   const isNPN = (data.transistorType || 'npn') === 'npn';
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} transistor-node ${selected ? "selected" : ""}`}>
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      {/* Base: kiri tengah */}
-      <Handle type="source" position={Position.Left} id="base" style={{ top: '50%' }} />
-      {/* Collector: atas tengah */}
-      <Handle type="source" position={Position.Top} id="collector" style={{ left: '50%' }} />
+    <BaseNode id={id} data={data} selected={selected} className="transistor-node" handles={[]}>      {/* Base: kiri tengah */}
+      <Handle type="target" position={Position.Left} id="base" style={{ top: '50%' }} />
+      {/* C di atas */}
+      <Handle type="target" position={Position.Top} id="collector" style={{ left: '50%' }} />
       {/* Emitter: bawah tengah */}
       <Handle type="source" position={Position.Bottom} id="emitter" style={{ left: '50%' }} />
 
@@ -56,6 +52,6 @@ export function TransistorNode({ id, data, selected }) {
           <option value="pnp">PNP (BC557)</option>
         </select>
       </div>
-    </div>
+    </BaseNode>
   );
 }

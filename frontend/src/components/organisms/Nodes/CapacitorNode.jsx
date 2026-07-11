@@ -1,7 +1,5 @@
+import { BaseNode } from "./BaseNode";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
-import { TwoWayHandles } from "../../atoms/TwoWayHandles";
 
 export function CapacitorNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
@@ -9,11 +7,7 @@ export function CapacitorNode({ id, data, selected }) {
   const isExploded = data.hasError && data.errorMessage && data.errorMessage.includes("Explosion");
   
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} capacitor-node ${selected ? "selected" : ""} ${isExploded ? "exploded" : ""}`}>
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      <TwoWayHandles />
-      {isElco && !isExploded && (
+    <BaseNode id={id} data={data} selected={selected} className="capacitor-node">      {isElco && !isExploded && (
         <>
           <div className="polar-label polar-plus">+</div>
           <div className="polar-label polar-minus">-</div>
@@ -47,6 +41,6 @@ export function CapacitorNode({ id, data, selected }) {
           <option value="ceramic">Ceramic</option>
         </select>
       </div>
-    </div>
+    </BaseNode>
   );
 }

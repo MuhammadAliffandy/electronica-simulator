@@ -201,7 +201,59 @@ async function detectAIMode() {
   return "mock (no LLM provider found)";
 }
 
+async function generateChatResponse(messages, circuitContext, lang) {
+  const ollamaUrl = process.env.OLLAMA_URL || "http://localhost:11434";
+  const model = process.env.OLLAMA_MODEL || "llama3.2";
+  
+  let systemContent = `You are "ELVO AI", a friendly, gamified physics tutor for an electronics learning simulator.
+PERSONA RULES:
+- You speak like an encouraging lab partner who genuinely loves circuits.
+- Use the "fun way" teaching philosophy: guide through curiosity.
+- Always relate concepts back to Ohm's Law (V = I × R) and basic circuit principles.
+- Use emojis sparingly but effectively (⚡🔋💡🔧).
+- Be concise in your responses (1-3 paragraphs max).`;
+
+  if (lang === "id") {
+    systemContent += `\n- CRITICAL: You MUST respond entirely in Bahasa Indonesia. Gunakan bahasa Indonesia yang ramah, santai, dan edukatif.`;
+  }
+
+  if (circuitContext) {
+    systemContent += `\n\nCURRENT CIRCUIT CONTEXT (Hidden from user):\n${JSON.stringify(circuitContext, null, 2)}`;
+  }
+
+  const payloadMessages = [
+    { role: "system", content: systemContent },
+    ...messages
+  ];
+
+  try {
+    const res = await fetch(`${ollamaUrl}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages: payloadMessages,
+        options: {
+          temperature: 0.7,
+        },
+      }),
+    });
+
+    if (!res.ok) throw new Error("Ollama returned an error");
+    const data = await res.json();
+    return data.message?.content || "No response";
+  } catch (error) {
+    console.warn("Chat generation failed:", error.message);
+    if (lang === "id") {
+      return "Maaf, mesin AI-ku sedang beristirahat. Pastikan Ollama berjalan di komputermu!";
+    }
+    return "Sorry, my AI engine is resting. Make sure Ollama is running!";
+  }
+}
+
 module.exports = {
   getAIInsights,
-  detectAIMode
+  detectAIMode,
+  generateChatResponse
 };

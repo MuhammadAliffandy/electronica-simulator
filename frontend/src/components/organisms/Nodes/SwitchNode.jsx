@@ -1,7 +1,5 @@
+import { BaseNode } from "./BaseNode";
 import { useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
-import { TwoWayHandles } from "../../atoms/TwoWayHandles";
 
 export function SwitchNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
@@ -13,38 +11,38 @@ export function SwitchNode({ id, data, selected }) {
   };
 
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} switch-node ${isOn ? "switch-closed" : "switch-open"} ${selected ? "selected" : ""}`}>
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      <TwoWayHandles />
-      {/* SPST Switch SVG */}
-      <div className="nodrag switch-svg-wrap" onClick={toggleSwitch} title={isOn ? "Klik untuk buka (OFF)" : "Klik untuk tutup (ON)"}>
+    <BaseNode id={id} data={data} selected={selected} className="switch-node">      {/* SPST Switch SVG */}
+      <div className="switch-svg-wrap" title={isOn ? "ON" : "OFF"}>
         <svg width="72" height="36" viewBox="0 0 72 36">
           {/* Left wire + terminal dot */}
           <line x1="0" y1="18" x2="16" y2="18" stroke={isOn ? "#10b981" : "#94a3b8"} strokeWidth="2.5"/>
-          <circle cx="16" cy="18" r="3.5" fill={isOn ? "#10b981" : "#94a3b8"}/>
+          <circle cx="16" cy="18" r="3" fill={isOn ? "#10b981" : "#94a3b8"} />
+          
           {/* Right wire + terminal dot */}
           <line x1="56" y1="18" x2="72" y2="18" stroke={isOn ? "#10b981" : "#94a3b8"} strokeWidth="2.5"/>
-          <circle cx="56" cy="18" r="3.5" fill={isOn ? "#10b981" : "#94a3b8"}/>
-          {/* Lever */}
-          {isOn ? (
-            /* Closed — horizontal lever */
-            <line x1="16" y1="18" x2="56" y2="18" stroke="#10b981" strokeWidth="3" strokeLinecap="round"/>
-          ) : (
-            /* Open — lever angled up */
-            <line x1="16" y1="18" x2="50" y2="6" stroke="#f59e0b" strokeWidth="3" strokeLinecap="round"/>
-          )}
-          {/* Arrow indicator when open */}
-          {!isOn && (
-            <polygon points="50,6 44,8 47,14" fill="#f59e0b" opacity="0.8"/>
-          )}
+          <circle cx="56" cy="18" r="3" fill={isOn ? "#10b981" : "#94a3b8"} />
+          
+          {/* The switch lever */}
+          <line 
+            x1="16" y1="18" 
+            x2="56" y2={isOn ? "18" : "6"} 
+            stroke={isOn ? "#10b981" : "#ef4444"} 
+            strokeWidth="3" 
+            strokeLinecap="round"
+            style={{ transition: 'all 0.2s ease' }}
+          />
         </svg>
       </div>
       <div className="node-label">{data.label}</div>
-      <div className="node-value" style={{ fontWeight: 'bold', color: isOn ? '#10b981' : '#f59e0b' }}>
-        {isOn ? "⬛ CLOSED (ON)" : "⬜ OPEN (OFF)"}
+      <div className="node-value" style={{ marginTop: '4px' }}>
+        <button 
+          className="node-input nodrag" 
+          onClick={toggleSwitch}
+          style={{ cursor: 'pointer', background: isOn ? '#10b981' : '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontWeight: 'bold' }}
+        >
+          {isOn ? 'TURN OFF' : 'TURN ON'}
+        </button>
       </div>
-      <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: '2px' }}>klik untuk toggle</div>
-    </div>
+    </BaseNode>
   );
 }

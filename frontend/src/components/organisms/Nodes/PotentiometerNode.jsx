@@ -1,14 +1,10 @@
+import { BaseNode } from "./BaseNode";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
 
 export function PotentiometerNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} potentiometer-node ${selected ? "selected" : ""}`}>
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      <Handle type="target" position={Position.Left} id="pin1" />
+    <BaseNode id={id} data={data} selected={selected} className="potentiometer-node" handles={[]}>      <Handle type="target" position={Position.Left} id="pin1" />
       <Handle type="source" position={Position.Bottom} id="wiper" />
       <Handle type="source" position={Position.Right} id="pin3" />
       <span className="node-emoji">🎛️</span>
@@ -27,6 +23,6 @@ export function PotentiometerNode({ id, data, selected }) {
       <div style={{ fontSize: '0.6rem', marginTop: '4px', color: 'var(--text-muted)' }}>
         Wiper: {data.wiperPercent || 50}% of {data.maxResistance || 10000}Ω
       </div>
-    </div>
+    </BaseNode>
   );
 }

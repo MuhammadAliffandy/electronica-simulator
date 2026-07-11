@@ -3,6 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const analysisController = require('../controllers/analysisController');
+const chatController = require('../controllers/chatController');
 const { detectAIMode } = require('../services/aiService');
 
 // Health check
@@ -19,5 +20,8 @@ router.get("/health", async (req, res) => {
 
 // Main circuit evaluation endpoint
 router.post("/evaluate-circuit", analysisController.evaluateCircuit);
+
+// Chat endpoint
+router.post("/chat", chatController.handleChat);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 // backend/controllers/analysisController.js
 
-const { validateCircuit } = require('../services/simulationService');
+const { validateCircuit } = require('../services/simulation/circuitAnalyzer');
 const { getAIInsights } = require('../services/aiService');
 
 exports.evaluateCircuit = async (req, res) => {

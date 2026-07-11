@@ -1,17 +1,11 @@
+import { BaseNode } from "./BaseNode";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
-import { TwoWayHandles } from "../../atoms/TwoWayHandles";
 
 export function BatteryNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   const isAC = data.sourceType === "ac";
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} battery-node ${selected ? "selected" : ""}`}>
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      <TwoWayHandles />
-      {/* SVG voltage source symbol */}
+    <BaseNode id={id} data={data} selected={selected} className="battery-node">      {/* SVG voltage source symbol */}
       <div className="vsource-symbol">
         {isAC ? (
           <svg viewBox="0 0 48 48" width="48" height="48">
@@ -48,6 +42,6 @@ export function BatteryNode({ id, data, selected }) {
         />
         V
       </div>
-    </div>
+    </BaseNode>
   );
 }

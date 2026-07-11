@@ -1,16 +1,10 @@
+import { BaseNode } from "./BaseNode";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
-import { TwoWayHandles } from "../../atoms/TwoWayHandles";
 
 export function BuzzerNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} buzzer-node ${selected ? "selected" : ""}`}>
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      <TwoWayHandles />
-      <span className="node-emoji">🔔</span>
+    <BaseNode id={id} data={data} selected={selected} className="buzzer-node">      <span className="node-emoji">🔔</span>
       <div className="node-label">{data.label}</div>
       <div className="node-value">
         <input 
@@ -21,6 +15,6 @@ export function BuzzerNode({ id, data, selected }) {
         />
         V min
       </div>
-    </div>
+    </BaseNode>
   );
 }

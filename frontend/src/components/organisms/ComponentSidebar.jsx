@@ -1,166 +1,92 @@
-import { useState } from "react";
-
-export const paletteItems = [
-  // Active
-  { type: "battery",     label: "Battery (Voltage Source)",  emoji: "⎓",  voltage: 9, sourceType: "dc", category: "active",  badge: "Aktif" },
-  { type: "diode",       label: "Diode",            emoji: "▶️", category: "active",  badge: "Aktif" },
-  { type: "transistor",  label: "Transistor",       emoji: "⬛", transistorType: "npn", category: "active",  badge: "Aktif" },
-  { type: "led",         label: "LED",              emoji: "💡", color: "Red", category: "active",  badge: "Aktif" },
-  // Passive
-  { type: "resistor",     label: "Resistor",        emoji: "⚡", resistance: 220, category: "passive", badge: "Pasif" },
-  { type: "potentiometer",label: "Potentiometer",   emoji: "🎛️", wiperPercent: 50, maxResistance: 10000, category: "passive", badge: "Pasif" },
-  { type: "capacitor",    label: "Capacitor",       emoji: "🔵", capacitance: 100, capType: "elco", category: "passive", badge: "Pasif" },
-  { type: "inductor",     label: "Inductor",        emoji: "➰", inductance: 100, category: "passive", badge: "Pasif" },
-  // Output
-  { type: "motor",   label: "DC Motor",  emoji: "⚙️", ratedVoltage: 5, category: "output" },
-  { type: "buzzer",  label: "Buzzer",    emoji: "🔔", minVoltage: 3,   category: "output" },
-  // Control & Instruments
-  { type: "switch",       label: "Switch",      emoji: "🔘", state: "open", category: "control" },
-  { type: "multimeter",   label: "Multimeter",  emoji: "📟", mode: "V",    category: "control" },
-  { type: "oscilloscope", label: "Oscilloscope",emoji: "📉",               category: "control" },
-  // Wiring
-  { type: "junction", label: "Junction", emoji: "⭕", category: "wiring" },
-];
-
-export const paletteCategoryKeys = ["active", "passive", "output", "control", "wiring"];
-
-export function getSidebarIcon(type) {
-  const style = { width: '22px', height: '22px', display: 'block', color: 'currentColor' };
-  switch(type) {
-    case 'battery':
-      return (
-        <svg viewBox="0 0 48 48" style={style}>
-          <circle cx="24" cy="24" r="20" stroke="currentColor" strokeWidth="3" fill="none"/>
-          <line x1="24" y1="12" x2="24" y2="22" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-          <line x1="19" y1="17" x2="29" y2="17" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-          <line x1="19" y1="31" x2="29" y2="31" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-        </svg>
-      );
-    case 'resistor':
-      return <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#8b5cf6', lineHeight: '22px' }}>Ω</div>;
-    case 'capacitor':
-      return (
-        <svg viewBox="0 0 40 24" style={{...style, color: '#3b82f6'}}>
-          <line x1="0" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="3"/>
-          <line x1="16" y1="4" x2="16" y2="20" stroke="currentColor" strokeWidth="3"/>
-          <line x1="24" y1="4" x2="24" y2="20" stroke="currentColor" strokeWidth="3"/>
-          <line x1="24" y1="12" x2="40" y2="12" stroke="currentColor" strokeWidth="3"/>
-        </svg>
-      );
-    case 'transistor':
-      return (
-        <svg viewBox="0 0 40 40" style={style}>
-          <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="3"/>
-          <line x1="0" y1="20" x2="12" y2="20" stroke="currentColor" strokeWidth="3"/>
-          <line x1="12" y1="10" x2="12" y2="30" stroke="currentColor" strokeWidth="4"/>
-          <line x1="12" y1="13" x2="26" y2="3" stroke="currentColor" strokeWidth="3"/>
-          <line x1="12" y1="27" x2="26" y2="37" stroke="currentColor" strokeWidth="3"/>
-        </svg>
-      );
-    case 'inductor':
-      return (
-        <svg viewBox="0 0 50 20" style={{...style, width: '30px', color: '#f59e0b'}}>
-          <path d="M 0 10 L 10 10 C 10 0, 20 0, 20 10 C 20 0, 30 0, 30 10 C 30 0, 40 0, 40 10 L 50 10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
-        </svg>
-      );
-    case 'switch':
-      return (
-        <svg viewBox="0 0 72 36" style={{...style, width: '28px', color: '#10b981'}}>
-          <line x1="0" y1="18" x2="16" y2="18" stroke="currentColor" strokeWidth="3"/>
-          <circle cx="16" cy="18" r="4" fill="currentColor"/>
-          <line x1="56" y1="18" x2="72" y2="18" stroke="currentColor" strokeWidth="3"/>
-          <circle cx="56" cy="18" r="4" fill="currentColor"/>
-          <line x1="16" y1="18" x2="56" y2="18" stroke="currentColor" strokeWidth="4" strokeLinecap="round"/>
-        </svg>
-      );
-    case 'led':
-      return <span style={{ fontSize: '18px' }}>💡</span>;
-    case 'diode':
-      return <span style={{ fontSize: '18px' }}>▶️</span>;
-    case 'potentiometer':
-      return <span style={{ fontSize: '18px' }}>🎛️</span>;
-    case 'motor':
-      return <span style={{ fontSize: '18px' }}>⚙️</span>;
-    case 'buzzer':
-      return <span style={{ fontSize: '18px' }}>🔔</span>;
-    case 'junction':
-      return <span style={{ fontSize: '18px' }}>⭕</span>;
-    case 'multimeter':
-      return <span style={{ fontSize: '18px' }}>📟</span>;
-    case 'oscilloscope':
-      return <span style={{ fontSize: '18px' }}>📉</span>;
-    default:
-      return <span style={{ fontSize: '18px' }}>🧩</span>;
-  }
-}
+import React from 'react';
 
 export function ComponentSidebar({
   t,
   sidebarOpen,
   setSidebarOpen,
-  highlightSidebar,
   catLabels,
   collapsedCats,
   toggleCategory,
   onDragStart
 }) {
+  const categories = [
+    { key: "active", title: "SOURCES" },
+    { key: "passive", title: "PASSIVES" },
+    { key: "semiconductors", title: "SEMICONDUCTORS" },
+    { key: "control", title: "TOOLS" },
+  ];
+
+  const vectorIcons = {
+    battery: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6m-3-3h6M9 16h6"/></svg>,
+    resistor: <span style={{ fontFamily: 'var(--font-sans)', fontWeight: 'bold', fontSize: '18px' }}>Ω</span>,
+    capacitor: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h5m4 0h5M10 6v12M14 6v12"/></svg>,
+    inductor: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12c0-2.2 1.8-4 4-4s4 1.8 4 4 1.8 4 4 4 4-1.8 4-4"/></svg>,
+    potentiometer: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h3l2-3 4 6 4-6 2 3h3M12 2v6l-2-2m4 0l-2 2"/></svg>,
+    diode: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12h4m8 0h4M8 7v10l8-5-8-5zM16 7v10"/></svg>,
+    transistor: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 4v16M8 8l4 4-4 4"/></svg>,
+    led: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 14h2m6 0h2M8 9v10l6-5-6-5zM14 9v10M17 5l2-2M20 8l2-1"/></svg>,
+    multimeter: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 8h8v4H8zM8 16h1m3 0h1"/></svg>,
+    oscilloscope: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M6 12c2 0 3-4 6-4s4 8 6 8"/></svg>,
+    switch: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 12h4m10 0h2M8 12l6-4"/><circle cx="8" cy="12" r="1"/><circle cx="16" cy="12" r="1"/></svg>,
+    buzzer: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 4L6 9H3v6h3l6 5V4z"/><path d="M16 9c1.5 1.5 1.5 4.5 0 6M19 6c3 3 3 9 0 12"/></svg>,
+    motor: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9"/><path d="M9 15V9l3 3 3-3v6"/></svg>,
+    junction: <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+  };
+
+  const paletteItems = {
+    active: [{ type: "battery", label: "DC Voltage Source" }],
+    passive: [
+      { type: "resistor", label: "Resistor" },
+      { type: "capacitor", label: "Capacitor" },
+      { type: "inductor", label: "Inductor" },
+      { type: "potentiometer", label: "Potentiometer" }
+    ],
+    semiconductors: [
+      { type: "diode", label: "Diode" },
+      { type: "transistor", label: "BJT Transistor" },
+      { type: "led", label: "LED" }
+    ],
+    control: [
+      { type: "multimeter", label: "Multimeter" },
+      { type: "oscilloscope", label: "Oscilloscope" },
+      { type: "switch", label: "Switch" },
+      { type: "buzzer", label: "Buzzer" },
+      { type: "motor", label: "DC Motor" },
+      { type: "junction", label: "Wire Junction" }
+    ]
+  };
+
   return (
-    <aside className={`sidebar ${sidebarOpen ? "open" : "collapsed"} ${highlightSidebar ? "highlight-pulse" : ""}`}>
+    <div className="sidebar">
       <div className="sidebar-header">
-        {sidebarOpen && <span className="sidebar-title">{t.components}</span>}
-        <button
-          className="sidebar-toggle"
-          onClick={() => setSidebarOpen((v) => !v)}
-          title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-        >
-          {sidebarOpen ? "◀" : "▶"}
-        </button>
+        <div className="sidebar-title">Components</div>
       </div>
-      {sidebarOpen && (
-        <div className="sidebar-body">
-          {paletteCategoryKeys.map((catKey) => {
-            const catLabel = catLabels[catKey];
-            const items = paletteItems.filter((p) => p.category === catKey);
-            if (items.length === 0) return null;
-            const isCollapsed = collapsedCats[catKey];
-            return (
-              <div key={catKey} className="sidebar-category">
-                <button
-                  className="category-header"
-                  onClick={() => toggleCategory(catKey)}
-                >
-                  <span className="category-label">{catLabel}</span>
-                  <span className={`category-chevron ${isCollapsed ? "collapsed" : ""}`}>
-                    ▾
-                  </span>
-                </button>
-                {!isCollapsed && (
-                  <div className="category-items">
-                    {items.map((item, i) => (
-                      <div
-                        key={`${catKey}-${i}`}
-                        className="sidebar-item"
-                        draggable
-                        onDragStart={(e) => onDragStart(e, item)}
-                      >
-                        <span className="sidebar-item-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {getSidebarIcon(item.type)}
-                        </span>
-                        <span className="sidebar-item-label">{item.label}</span>
-                        {item.badge && (
-                          <span className={`component-badge badge-${item.badge === 'Aktif' ? 'active' : 'passive'}`}>
-                            {item.badge}
-                          </span>
-                        )}
-                      </div>
-                    ))}
+
+      <div className="sidebar-categories">
+        {categories.map((cat) => (
+          <div key={cat.key}>
+            <div className="category-header" onClick={() => toggleCategory(cat.key)}>
+              <span>{collapsedCats[cat.key] ? '▶' : '▼'}</span>
+              {cat.title}
+            </div>
+            {!collapsedCats[cat.key] && (
+              <div className="category-items">
+                {paletteItems[cat.key].map(item => (
+                  <div 
+                    key={item.type}
+                    className="palette-item"
+                    onDragStart={(event) => onDragStart(event, item.type, item)}
+                    draggable
+                  >
+                    <span className="palette-icon">{vectorIcons[item.type]}</span>
+                    {item.label}
                   </div>
-                )}
+                ))}
               </div>
-            );
-          })}
-        </div>
-      )}
-    </aside>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -1,153 +1,60 @@
-// ============================================
-// AI Electronics Simulator - Main Application
-// React + React Flow + AI Tutor Integration
-// ============================================
-
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
   ReactFlow,
-  Background,
-  Controls,
-  MiniMap,
+  ReactFlowProvider,
   addEdge,
   useNodesState,
   useEdgesState,
-  Handle,
-  Position,
-  useReactFlow,
-  useViewport,
+  Controls,
+  Background,
+  MiniMap,
   ConnectionMode,
-  getSmoothStepPath,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import "./index.css";
 
-// ============================================
-// BACKEND API URL
-// ============================================
-const API_BASE = window.location.protocol === 'file:' 
-  ? 'http://localhost:3001' 
-  : `http://${window.location.hostname}:3001`;
+import { ComponentSidebar } from "./components/organisms/ComponentSidebar";
+import { TutorPanel } from "./components/organisms/TutorPanel";
 
-// ============================================
-// INTERNATIONALIZATION (EN / ID)
-// ============================================
-
-const i18n = {
-  en: {
-    headerSubtitle: "AI-Powered Circuit Learning Lab",
-    systemOnline: "System Online",
-    components: "🧩 Components",
-    catActive: "⚡ Active",
-    catPassive: "📐 Passive",
-    catOutput: "💡 Output",
-    catControl: "🔘 Control",
-    catWiring: "🔗 Wiring",
-    workspace: "🔧 Circuit Workspace",
-    componentCount: "Components",
-    wireCount: "Wires",
-    reset: "🔄 Reset",
-    simulate: "RUN SIMULATION & ASK AI",
-    analyzing: "Analyzing Circuit...",
-    tutorRole: "AI Circuit Tutor",
-    readyTitle: "Ready to Learn!",
-    readyText: 'Connect your circuit components on the canvas, then hit "Run Simulation & Ask AI" to get real-time feedback from ELVO AI, your AI tutor!',
-    apiStatus: "API Status",
-    analysisLog: "Analysis Log",
-    aiInsights: "AI Insights",
-    errorLog: "Error Log",
-    greeting: "Greeting",
-    explanation: "Explanation",
-    hint: "💡 Hint",
-    backendError: "Could not reach the backend. Make sure the server is running!",
-  },
-  id: {
-    headerSubtitle: "Lab Pembelajaran Rangkaian Berbasis AI",
-    systemOnline: "Sistem Aktif",
-    components: "🧩 Komponen",
-    catActive: "⚡ Komponen Aktif",
-    catPassive: "📐 Komponen Pasif",
-    catOutput: "💡 Keluaran",
-    catControl: "🔘 Kontrol",
-    catWiring: "🔗 Kabel",
-    workspace: "🔧 Area Kerja Rangkaian",
-    componentCount: "Komponen",
-    wireCount: "Kabel",
-    reset: "🔄 Reset",
-    simulate: "JALANKAN SIMULASI & TANYA AI",
-    analyzing: "Menganalisis Rangkaian...",
-    tutorRole: "Tutor Rangkaian AI",
-    readyTitle: "Siap Belajar!",
-    readyText: 'Hubungkan komponen rangkaian di kanvas, lalu tekan "Jalankan Simulasi & Tanya AI" untuk mendapat umpan balik langsung dari ELVO AI, tutor AI kamu!',
-    apiStatus: "Status API",
-    analysisLog: "Log Analisis",
-    aiInsights: "Wawasan AI",
-    errorLog: "Log Error",
-    greeting: "Sapaan",
-    explanation: "Penjelasan",
-    hint: "💡 Petunjuk",
-    backendError: "Tidak dapat terhubung ke backend. Pastikan server sudah berjalan!",
-  },
-};
-
-// ============================================
-// CUSTOM NODE COMPONENTS
-// Each circuit component has its own styled node
-// ============================================
-
+// Import all nodes
 import { BatteryNode } from "./components/organisms/Nodes/BatteryNode";
 import { ResistorNode } from "./components/organisms/Nodes/ResistorNode";
-import { PotentiometerNode } from "./components/organisms/Nodes/PotentiometerNode";
+import { DiodeNode } from "./components/organisms/Nodes/DiodeNode";
+import { LEDNode } from "./components/organisms/Nodes/LEDNode";
 import { CapacitorNode } from "./components/organisms/Nodes/CapacitorNode";
 import { InductorNode } from "./components/organisms/Nodes/InductorNode";
-import { LEDNode } from "./components/organisms/Nodes/LEDNode";
-import { DiodeNode } from "./components/organisms/Nodes/DiodeNode";
-import { TransistorNode } from "./components/organisms/Nodes/TransistorNode";
-import { SwitchNode } from "./components/organisms/Nodes/SwitchNode";
 import { MotorNode } from "./components/organisms/Nodes/MotorNode";
 import { BuzzerNode } from "./components/organisms/Nodes/BuzzerNode";
-import { WireJunctionNode } from "./components/organisms/Nodes/WireJunctionNode";
+import { SwitchNode } from "./components/organisms/Nodes/SwitchNode";
+import { PotentiometerNode } from "./components/organisms/Nodes/PotentiometerNode";
 import { MultimeterNode } from "./components/organisms/Nodes/MultimeterNode";
 import { OscilloscopeNode } from "./components/organisms/Nodes/OscilloscopeNode";
-import { JumpEdge } from "./components/atoms/JumpEdge";
-import { TutorPanel } from "./components/organisms/TutorPanel";
-import { ComponentSidebar, paletteItems, paletteCategoryKeys } from "./components/organisms/ComponentSidebar";
-import { HumpOverlay } from "./components/organisms/HumpOverlay";
+import { TransistorNode } from "./components/organisms/Nodes/TransistorNode";
+import { WireJunctionNode } from "./components/organisms/Nodes/WireJunctionNode";
 
-// Register custom node types
 const nodeTypes = {
   battery: BatteryNode,
   resistor: ResistorNode,
-  potentiometer: PotentiometerNode,
+  diode: DiodeNode,
+  led: LEDNode,
   capacitor: CapacitorNode,
   inductor: InductorNode,
-  led: LEDNode,
-  diode: DiodeNode,
-  transistor: TransistorNode,
-  switch: SwitchNode,
   motor: MotorNode,
   buzzer: BuzzerNode,
-  junction: WireJunctionNode,
+  switch: SwitchNode,
+  potentiometer: PotentiometerNode,
   multimeter: MultimeterNode,
   oscilloscope: OscilloscopeNode,
+  transistor: TransistorNode,
+  junction: WireJunctionNode,
 };
-
-const edgeTypes = {
-  jumpEdge: JumpEdge,
-};
-
-// ============================================
-// DEFAULT CIRCUIT LAYOUT
-// 3 default components arranged in a series layout
-// ============================================
 
 const defaultNodes = [
   {
     id: "battery-1",
     type: "battery",
-    position: { x: 80, y: 200 },
+    position: { x: 150, y: 150 },
     data: {
-      label: "9V DC Source",
+      label: "9V Battery",
       componentType: "battery",
       voltage: 9,
       sourceType: "dc",
@@ -163,100 +70,108 @@ const defaultNodes = [
       resistance: 220,
     },
   },
-  {
-    id: "led-1",
-    type: "led",
-    position: { x: 620, y: 200 },
-    data: {
-      label: "Red LED",
-      componentType: "led",
-      color: "Red",
-    },
-  },
 ];
 
-const defaultEdges = [];
+let nodeIdCounter = 1;
 
-// ============================================
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(defaultEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [response, setResponse] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
-  const [intersections, setIntersections] = useState([]);
-  const reactFlowWrapper = useRef(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [collapsedCats, setCollapsedCats] = useState({});
-  const [lang, setLang] = useState("id");
-  const [highlightSidebar, setHighlightSidebar] = useState(false);
-  const [highlightTutor, setHighlightTutor] = useState(false);
-  const [theme, setTheme] = useState("dark");
+
+  const [messages, setMessages] = useState([
+    { role: 'assistant', content: 'Halo! Aku ELVO AI, rekan belajarmu di lab elektronik ini. Ada yang bisa aku bantu atau mari kita mulai merangkai sirkuit!' }
+  ]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  const [leftWidth, setLeftWidth] = useState(260);
+  const [isResizingLeft, setIsResizingLeft] = useState(false);
+  const [rightWidth, setRightWidth] = useState(320);
+  const [isResizingRight, setIsResizingRight] = useState(false);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
+    const handleMouseMove = (e) => {
+      if (isResizingLeft) {
+        setLeftWidth(Math.max(200, Math.min(e.clientX, 500)));
+      }
+      if (isResizingRight) {
+        setRightWidth(Math.max(250, Math.min(window.innerWidth - e.clientX, 600)));
+      }
+    };
+    const handleMouseUp = () => {
+      setIsResizingLeft(false);
+      setIsResizingRight(false);
+    };
 
-  // Current translations
-  const t = i18n[lang];
+    if (isResizingLeft || isResizingRight) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingLeft, isResizingRight]);
 
-  // Handle suggestion button click
-  const handleSuggestionClick = () => {
-    // Make sure sidebar is open
-    setSidebarOpen(true);
-    // Add a quick pulse effect to draw attention to the components
-    setHighlightSidebar(true);
-    setTimeout(() => setHighlightSidebar(false), 1500);
-  };
+  const [past, setPast] = useState([]);
+  const [future, setFuture] = useState([]);
 
-  // Handle error badge click on a node
-  const handleNodeErrorClick = (e) => {
-    e.stopPropagation(); // prevent selecting the node behind the badge
-    // Highlight the tutor panel so the user knows where the explanation is
-    setHighlightTutor(true);
-    setTimeout(() => setHighlightTutor(false), 1500);
-  };
+  const takeSnapshot = useCallback(() => {
+    setPast((p) => [
+      ...p,
+      { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) },
+    ]);
+    setFuture([]);
+  }, [nodes, edges]);
 
-  // Category labels mapped from i18n
-  const catLabels = {
-    active: t.catActive,
-    passive: t.catPassive,
-    output: t.catOutput,
-    control: t.catControl,
-    wiring: t.catWiring,
-  };
+  const handleUndo = useCallback(() => {
+    if (past.length === 0) return;
+    const previous = past[past.length - 1];
+    setPast((p) => p.slice(0, -1));
+    setFuture((f) => [
+      { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) },
+      ...f,
+    ]);
+    setNodes(previous.nodes);
+    setEdges(previous.edges);
+  }, [past, nodes, edges, setNodes, setEdges]);
 
-  // Toggle a category's collapsed state
+  const handleRedo = useCallback(() => {
+    if (future.length === 0) return;
+    const next = future[0];
+    setFuture((f) => f.slice(1));
+    setPast((p) => [
+      ...p,
+      { nodes: JSON.parse(JSON.stringify(nodes)), edges: JSON.parse(JSON.stringify(edges)) },
+    ]);
+    setNodes(next.nodes);
+    setEdges(next.edges);
+  }, [future, nodes, edges, setNodes, setEdges]);
+
+  const onNodeDragStart = useCallback(() => {
+    takeSnapshot();
+  }, [takeSnapshot]);
+
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [collapsedCats, setCollapsedCats] = useState({});
+  const reactFlowWrapper = useRef(null);
+  const [reactFlowInstance, setReactFlowInstance] = useState(null);
+
   const toggleCategory = (catKey) => {
     setCollapsedCats((prev) => ({ ...prev, [catKey]: !prev[catKey] }));
   };
 
-  // Connect nodes when user drags an edge
   const onConnect = useCallback(
     (params) => {
-      setEdges((eds) =>
-        addEdge(
-          {
-            ...params,
-            type: "jumpEdge",
-            className: `jump-edge ${isRunning ? "animated reverse-animation" : ""}`,
-            style: { stroke: "#00d4ff", borderRadius: 0 },
-          },
-          eds
-        )
-      );
+      takeSnapshot();
+      setEdges((eds) => addEdge({ ...params, animated: isRunning, style: { stroke: 'var(--accent-cyan)', strokeWidth: 2 } }, eds));
     },
-    [setEdges]
+    [setEdges, isRunning, takeSnapshot]
   );
 
-  // Handle double clicking an edge to delete it
-  const onEdgeDoubleClick = useCallback((event, edge) => {
-    event.stopPropagation();
-    setEdges((eds) => eds.filter((e) => e.id !== edge.id));
-  }, [setEdges]);
-
-  // Handle drag from palette
   const onDragOver = useCallback((event) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
@@ -265,305 +180,244 @@ export default function App() {
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
+      const type = event.dataTransfer.getData("application/reactflow");
+      const defaultDataStr = event.dataTransfer.getData("application/reactflow-data");
+      if (typeof type === "undefined" || !type || !reactFlowInstance) return;
 
-      const dataStr = event.dataTransfer.getData("application/reactflow");
-      if (!dataStr || !reactFlowInstance) return;
-
-      const data = JSON.parse(dataStr);
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      const newId = `${data.type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      let parsedData = {};
+      try {
+        parsedData = defaultDataStr ? JSON.parse(defaultDataStr) : {};
+      } catch (e) { }
+
       const newNode = {
-        id: newId,
-        type: data.type,
+        id: `${type}-${nodeIdCounter++}`,
+        type,
         position,
         data: {
-          label: data.label,
-          componentType: data.type,
-          ...(data.voltage !== undefined && { voltage: data.voltage }),
-          ...(data.sourceType && { sourceType: data.sourceType }),
-          ...(data.resistance !== undefined && { resistance: data.resistance }),
-          ...(data.capacitance !== undefined && { capacitance: data.capacitance }),
-          ...(data.color && { color: data.color }),
-          ...(data.state && { state: data.state }),
-          ...(data.ratedVoltage !== undefined && { ratedVoltage: data.ratedVoltage }),
-          ...(data.minVoltage !== undefined && { minVoltage: data.minVoltage }),
+          ...parsedData,
+          componentType: type,
         },
       };
 
-      setNodes((nds) => [...nds, newNode]);
+      takeSnapshot();
+      setNodes((nds) => nds.concat(newNode));
     },
-    [reactFlowInstance, setNodes]
+    [reactFlowInstance, setNodes, takeSnapshot]
   );
 
-  // Drag start handler for palette items
-  const onDragStart = (event, item) => {
-    event.dataTransfer.setData("application/reactflow", JSON.stringify(item));
-    event.dataTransfer.effectAllowed = "move";
-  };
-
-  // Run Simulation - send circuit to backend
-  // Calculate wire intersections for humps
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const paths = document.querySelectorAll('.react-flow__edge-path-inner');
-      const segs = [];
-      paths.forEach(p => {
-        const d = p.getAttribute('d');
-        if (!d) return;
-        const parts = d.match(/[ML]\s*[-0-9.]+[,\s]+[-0-9.]+/g);
-        if (!parts) return;
-        let prevX, prevY;
-        parts.forEach(part => {
-          const cleanPart = part.replace(/[ML]/g, ' ').trim().replace(/,/g, ' ');
-          const tokens = cleanPart.split(/\s+/);
-          if (tokens.length < 2) return;
-          const px = parseFloat(tokens[tokens.length-2]);
-          const py = parseFloat(tokens[tokens.length-1]);
-          if (part.includes('M')) {
-            prevX = px; prevY = py;
-          } else if (part.includes('L')) {
-            segs.push({ x1: prevX, y1: prevY, x2: px, y2: py });
-            prevX = px; prevY = py;
-          }
-        });
-      });
-
-      const horizontals = [];
-      const verticals = [];
-      segs.forEach(s => {
-        if (Math.abs(s.y1 - s.y2) < 0.5) horizontals.push({ y: s.y1, xMin: Math.min(s.x1, s.x2), xMax: Math.max(s.x1, s.x2) });
-        else if (Math.abs(s.x1 - s.x2) < 0.5) verticals.push({ x: s.x1, yMin: Math.min(s.y1, s.y2), yMax: Math.max(s.y1, s.y2) });
-      });
-
-      const ints = [];
-      horizontals.forEach(h => {
-        verticals.forEach(v => {
-          if (v.x > h.xMin + 1 && v.x < h.xMax - 1 && h.y > v.yMin + 1 && h.y < v.yMax - 1) {
-            ints.push({ x: v.x, y: h.y });
-          }
-        });
-      });
-      
-      // Remove duplicates
-      const uniqueInts = [];
-      const seen = new Set();
-      ints.forEach(int => {
-        const key = `${Math.round(int.x)},${Math.round(int.y)}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          uniqueInts.push(int);
-        }
-      });
-      
-      setIntersections(uniqueInts);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [nodes, edges]);
+  const onEdgeDoubleClick = useCallback((event, edge) => {
+    takeSnapshot();
+    setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+  }, [setEdges, takeSnapshot]);
 
   const handleSimulate = async () => {
     setIsLoading(true);
-    setResponse(null);
+    setIsRunning(true);
+
+    // Animate edges
+    setEdges(eds => eds.map(e => ({ ...e, animated: true })));
 
     try {
-      const payload = {
-        lang,
-        nodes: nodes.map((n) => ({
-          id: n.id,
-          type: n.type,
-          data: n.data,
-          position: n.position,
-        })),
-        edges: edges.map((e) => ({
-          id: e.id,
-          source: e.source,
-          target: e.target,
-          sourceHandle: e.sourceHandle,
-          targetHandle: e.targetHandle,
-        })),
-      };
-
-      const res = await fetch(`${API_BASE}/api/evaluate-circuit`, {
+      const res = await fetch("http://localhost:3001/api/evaluate-circuit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ nodes, edges, lang: "id" }),
       });
-
       const data = await res.json();
       setResponse(data);
 
-      // Map error states to the nodes
-      setNodes((nds) =>
-        nds.map((n) => {
-          const isCircuitSuccess = data.error_log && data.error_log.length === 0;
-          const hasErr = data.error_nodes && data.error_nodes[n.id] !== undefined;
-          return {
-            ...n,
-            data: {
-              ...n.data,
-              hasError: hasErr,
-              errorMessage: hasErr ? data.error_nodes[n.id] : null,
-              isSuccess: !hasErr && isCircuitSuccess,
-              ...(data.nodes_state && data.nodes_state[n.id] ? data.nodes_state[n.id] : {})
-            },
-          };
-        })
-      );
-    } catch (error) {
-      setResponse({
-        api_status: "ERROR",
-        analysis_log: [],
-        ai_insights: null,
-        error_log: [
-          `❌ ${t.backendError}`,
-          `Details: ${error.message}`,
-        ],
+      if (data.ai_insights) {
+        const circuitMessage = `${data.ai_insights.explanation}\n\n💡 HINT: ${data.ai_insights.hint}`;
+        setMessages(prev => [...prev, { role: 'assistant', isSystem: true, content: circuitMessage }]);
+      }
+
+      if (data.nodes_state) {
+        setNodes((nds) =>
+          nds.map((n) => {
+            if (data.nodes_state[n.id]) {
+              return {
+                ...n,
+                data: {
+                  ...n.data,
+                  ...data.nodes_state[n.id],
+                  isSuccess: data.api_status === "ACTIVE",
+                },
+              };
+            }
+            if (data.error_nodes && data.error_nodes[n.id]) {
+              return {
+                ...n,
+                data: { ...n.data, hasError: true, errorMessage: data.error_nodes[n.id] },
+              };
+            }
+            return n;
+          })
+        );
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Simulation failed. Ensure backend is running.");
+      setIsRunning(false);
+      setEdges(eds => eds.map(e => ({ ...e, animated: false })));
+    }
+    setIsLoading(false);
+  };
+
+  const handleSendMessage = async () => {
+    if (!chatInput.trim()) return;
+    const newMessages = [...messages, { role: 'user', content: chatInput }];
+    setMessages(newMessages);
+    setChatInput("");
+    setIsChatLoading(true);
+
+    try {
+      const res = await fetch("http://localhost:3001/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages, circuitContext: response || null, lang: "id" }),
       });
-    } finally {
-      setIsLoading(false);
-      setIsRunning(true);
+      const data = await res.json();
+      setMessages([...newMessages, data]);
+    } catch (err) {
+      console.error(err);
+      setMessages([...newMessages, { role: 'assistant', content: 'Maaf, aku sedang tidak bisa merespons saat ini.' }]);
+    }
+    setIsChatLoading(false);
+  };
+
+  const handleSave = () => {
+    const data = JSON.stringify({ nodes, edges }, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "circuit.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLoad = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (parsed.nodes && parsed.edges) {
+          setNodes(parsed.nodes);
+          setEdges(parsed.edges);
+        } else {
+          alert("Invalid circuit file format.");
+        }
+      } catch (err) {
+        alert("Error parsing file.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ""; // Reset input
+  };
+
+  const handleClear = () => {
+    if (window.confirm("Yakin ingin menghapus seluruh sirkuit?")) {
+      takeSnapshot();
+      setNodes([]);
+      setEdges([]);
+      setResponse(null);
     }
   };
 
-  const simulateRef = useRef(handleSimulate);
-  useEffect(() => {
-    simulateRef.current = handleSimulate;
-  });
-
-  // Manual trigger for real-time controls (e.g., potentiometer)
-  useEffect(() => {
-    window.triggerSimulation = () => {
-      if (isRunning) {
-        // debounce slightly to prevent spamming
-        clearTimeout(window.simTimer);
-        window.simTimer = setTimeout(() => {
-          simulateRef.current();
-        }, 100);
-      }
-    };
-  }, [isRunning]);
-
-  // Update edge animation state when isRunning changes
-  useEffect(() => {
-    setEdges((eds) => 
-      eds.map((e) => ({
-        ...e,
-        className: `jump-edge ${isRunning ? "animated reverse-animation" : ""}`,
-      }))
-    );
-  }, [isRunning]);
-
-  const handleStop = () => {
-    setIsRunning(false);
-    setResponse(null);
-    setNodes((nds) =>
-      nds.map((n) => ({
-        ...n,
-        data: {
-          ...n.data,
-          hasError: false,
-          errorMessage: null,
-          isSuccess: false,
-          ledState: "off",
-        },
-      }))
-    );
-  };
-
-  // Reset circuit — kosongkan kanvas sepenuhnya
-  const handleReset = () => {
-    handleStop();
-    setNodes([]);
-    setEdges([]);
-    setResponse(null);
-    setIntersections([]);
-    nodeIdCounter = 1;
-  };
-
-  // Inject the error click handler into every node's data before passing to ReactFlow
-  const nodesWithHandlers = nodes.map(n => ({
-    ...n,
-    data: { ...n.data, onNodeErrorClick: handleNodeErrorClick }
-  }));
-
-  // Memoize node types to prevent re-renders
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
   return (
-    <div className={`app-container ${isRunning ? "is-running" : ""}`}>
-      {/* ---- Header ---- */}
-      <header className="app-header">
-        <div className="header-brand">
-          <div className="header-logo">
-            <img src="/elvo-logo.jpg" alt="ELVO Logo" />
-          </div>
-          <div>
-            <div className="header-title">ELVO</div>
-            <div className="header-subtitle">
-              {t.headerSubtitle}
+    <div className="app-wrapper">
+      <div className="topbar">
+        <div className="topbar-left">
+          <div className="topbar-brand">
+            <div className="topbar-logo">
+              <img src="/elvo-logo.jpg" alt="ELVO Logo" />
             </div>
+            <div className="topbar-title">ELVO Simulate</div>
+          </div>
+          <div className="topbar-menu">
+            <div className="dropdown">
+              <span>File</span>
+              <div className="dropdown-content">
+                <div onClick={handleSave}>Save Circuit</div>
+                <div>
+                  <label htmlFor="load-circuit" style={{ cursor: 'pointer' }}>Load Circuit</label>
+                  <input type="file" id="load-circuit" accept=".json" style={{ display: 'none' }} onChange={handleLoad} />
+                </div>
+              </div>
+            </div>
+            <div className="dropdown">
+              <span>Edit</span>
+              <div className="dropdown-content">
+                <div onClick={handleUndo} style={{ color: past.length === 0 ? 'var(--text-muted)' : 'inherit', pointerEvents: past.length === 0 ? 'none' : 'auto' }}>Undo (Ctrl+Z)</div>
+                <div onClick={handleRedo} style={{ color: future.length === 0 ? 'var(--text-muted)' : 'inherit', pointerEvents: future.length === 0 ? 'none' : 'auto' }}>Redo (Ctrl+Y)</div>
+                <hr style={{ borderColor: 'var(--border-color)', margin: '4px 0' }} />
+                <div onClick={handleClear}>Clear Canvas</div>
+              </div>
+            </div>
+            <span onClick={handleSimulate}>Simulate</span>
           </div>
         </div>
-        <div className="header-status">
+        <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <button
-            className="lang-toggle"
-            onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
-            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="canvas-run-btn"
+            onClick={handleSimulate}
+            style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
           >
-            {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
+            ▶ RUN SIM
           </button>
-          <button
-            className="lang-toggle"
-            onClick={() => setLang((l) => (l === "en" ? "id" : "en"))}
-            title={lang === "en" ? "Ganti ke Bahasa Indonesia" : "Switch to English"}
+          <span
+            className="topbar-icon"
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-main)' }}
+            onClick={() => {
+              const root = document.documentElement;
+              const isLight = root.getAttribute('data-theme') === 'light';
+              root.setAttribute('data-theme', isLight ? 'dark' : 'light');
+            }}
+            title="Toggle Theme"
           >
-            <span className={`lang-option ${lang === "en" ? "active" : ""}`}>EN</span>
-            <span className="lang-divider">/</span>
-            <span className={`lang-option ${lang === "id" ? "active" : ""}`}>ID</span>
-          </button>
-          <div className="status-badge">
-            <span className="status-dot"></span>
-            {t.systemOnline}
-          </div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 2v20a10 10 0 0 0 0-20z" fill="currentColor" />
+            </svg>
+          </span>
         </div>
-      </header>
+      </div>
 
-      {/* ---- Main 3-Column Layout ---- */}
-      <div className="main-content">
-        {/* LEFT: Component Sidebar */}
-        <ComponentSidebar
-          t={t}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          highlightSidebar={highlightSidebar}
-          catLabels={catLabels}
-          collapsedCats={collapsedCats}
-          toggleCategory={toggleCategory}
-          onDragStart={onDragStart}
-        />
+      <div className="main-area">
+        <div style={{ width: leftWidth, height: '100%', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
+          <ComponentSidebar
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            collapsedCats={collapsedCats}
+            toggleCategory={toggleCategory}
+            onDragStart={(event, nodeType, nodeData) => {
+              event.dataTransfer.setData("application/reactflow", nodeType);
+              event.dataTransfer.setData("application/reactflow-data", JSON.stringify(nodeData));
+              event.dataTransfer.effectAllowed = "move";
+            }}
+          />
+        </div>
 
-        {/* CENTER: Circuit Canvas */}
-        <div className="canvas-panel">
-          {/* Canvas Toolbar */}
-          <div className="canvas-toolbar">
-            <span className="toolbar-title">
-              {t.workspace} — {nodes.length} {t.componentCount}, {edges.length}{" "}
-              {t.wireCount}
-            </span>
-            <div className="toolbar-actions">
-              <button className="btn-secondary" onClick={handleReset}>
-                {t.reset}
-              </button>
-            </div>
+        <div className="resizer" onMouseDown={() => setIsResizingLeft(true)} />
+
+        <div className="canvas-wrapper" ref={reactFlowWrapper}>
+          <div className="canvas-overlay-top">
+            X: 124.0 Y: 45.5 | Z-Zoom: 100%
           </div>
-
-          {/* React Flow Canvas */}
-          <div className="canvas-wrapper" ref={reactFlowWrapper}>
+          <ReactFlowProvider>
             <ReactFlow
-              nodes={nodesWithHandlers}
+              nodes={nodes}
               edges={edges}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
@@ -572,57 +426,53 @@ export default function App() {
               onInit={setReactFlowInstance}
               onDrop={onDrop}
               onDragOver={onDragOver}
+              onNodeDragStart={onNodeDragStart}
               nodeTypes={memoizedNodeTypes}
-              edgeTypes={edgeTypes}
               connectionMode={ConnectionMode.Loose}
-              connectionRadius={40}
+              defaultEdgeOptions={{ type: 'step' }}
               fitView
-              proOptions={{ hideAttribution: true }}
-              defaultEdgeOptions={{
-                type: "jumpEdge",
-                className: "jump-edge",
-                style: { stroke: "#00d4ff", borderRadius: 0 },
-              }}
             >
-              <Background gap={20} size={1} />
-              <HumpOverlay intersections={intersections} isRunning={isRunning} />
+              <Background color="var(--border-color)" gap={16} size={1} />
               <Controls />
-              <MiniMap nodeBorderRadius={8} />
+              <MiniMap
+                nodeColor={(node) => {
+                  switch (node.type) {
+                    case 'battery': return '#ef4444';
+                    case 'resistor': return '#8b5cf6';
+                    case 'capacitor': return '#3b82f6';
+                    default: return 'var(--accent-cyan)';
+                  }
+                }}
+                nodeStrokeColor="var(--border-color)"
+                nodeBorderRadius={4}
+                maskColor="var(--bg-panel)"
+                style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}
+              />
             </ReactFlow>
-          </div>
-
-          {/* Action Bar */}
-          <div className="action-bar">
-            <button
-              id="btn-simulate"
-              className={`btn-simulate ${isLoading ? "loading" : ""} ${isRunning ? "btn-stop" : ""}`}
-              onClick={isRunning ? handleStop : handleSimulate}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <div className="spinner"></div>
-                  {t.analyzing}
-                </>
-              ) : isRunning ? (
-                <>
-                  <span className="btn-icon">⏹</span>
-                  STOP SIMULATION
-                </>
-              ) : (
-                <>
-                  <span className="btn-icon">🚀</span>
-                  {t.simulate}
-                </>
-              )}
-            </button>
-          </div>
+          </ReactFlowProvider>
         </div>
 
-        {/* RIGHT: AI Tutor Panel */}
-        <div className={`tutor-wrapper ${highlightTutor ? "highlight-pulse" : ""}`}>
-          <TutorPanel response={response} isLoading={isLoading} t={t} onSuggestionClick={handleSuggestionClick} />
+        <div className="resizer" onMouseDown={() => setIsResizingRight(true)} />
+
+        <div style={{ width: rightWidth, height: '100%', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' }}>
+          <TutorPanel
+            messages={messages}
+            isChatLoading={isChatLoading}
+            onSendMessage={handleSendMessage}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+          />
         </div>
+      </div>
+
+      <div className="status-bar">
+        <div className="status-left">
+          <div className="status-indicator"></div>
+          <div>Solver: Steady State</div>
+          <div>|</div>
+          <div>Engine: SPICE-Ng</div>
+        </div>
+        <div>T: 0.000s</div>
       </div>
     </div>
   );

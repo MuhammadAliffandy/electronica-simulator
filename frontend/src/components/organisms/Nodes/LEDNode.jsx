@@ -1,6 +1,5 @@
+import { BaseNode } from "./BaseNode";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
 
 const LED_SPECS = {
   Red:    { vf: 2.0, ifMax: 20, glowColor: "239,68,68" },
@@ -37,14 +36,15 @@ export function LEDNode({ id, data, selected }) {
     : {};
 
   return (
-    <div
-      className={`circuit-node ${data.isSuccess ? "success" : ""} led-node led-${color.toLowerCase()} ${selected ? "selected" : ""} ${isBurnt ? "led-burnt" : ""}`}
+    <BaseNode
+      className={`led-node led-${color.toLowerCase()} ${isBurnt ? "led-burnt" : ""}`}
+      id={id}
+      data={data}
+      selected={selected}
       style={nodeGlowStyle}
-    >
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      {/* 2 kaki: Anode (+) di kiri, Katode (-) di kanan */}
-      <Handle type="source" position={Position.Left} id="anode" />
+      handles={[]}
+    >      {/* 2 kaki: Anode (+) di kiri, Katode (-) di kanan */}
+      <Handle type="target" position={Position.Left} id="anode" />
       <Handle type="source" position={Position.Right} id="cathode" />
       <div className="pin-label pin-left" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem' }}>A+</div>
       <div className="pin-label pin-right" style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.75rem' }}>K-</div>
@@ -106,6 +106,6 @@ export function LEDNode({ id, data, selected }) {
           <option value="White">White</option>
         </select>
       </div>
-    </div>
+    </BaseNode>
   );
 }

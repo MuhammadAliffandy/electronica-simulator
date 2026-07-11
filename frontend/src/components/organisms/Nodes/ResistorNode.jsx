@@ -1,17 +1,11 @@
+import { BaseNode } from "./BaseNode";
 import { Handle, Position, useReactFlow } from "@xyflow/react";
-import { NodeDeleteButton } from "../../atoms/NodeDeleteButton";
-import { ErrorBadge } from "../../molecules/ErrorBadge";
 
 export function ResistorNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   return (
-    <div className={`circuit-node ${data.isSuccess ? "success" : ""} resistor-node ${selected ? "selected" : ""}`}>
-      <NodeDeleteButton id={id} />
-      <ErrorBadge data={data} />
-      {/* 2 kaki: kiri dan kanan. Non-polar, tanpa label +/- */}
-      <Handle type="source" position={Position.Left} id="left" />
-      <Handle type="source" position={Position.Right} id="right" />
-      <div className="resistor-body nodrag" style={{ background: 'transparent', border: 'none', height: 'auto', display: 'block', fontSize: '36px', color: '#8b5cf6', margin: '-5px 0 5px 0' }}>
+    <BaseNode id={id} data={data} selected={selected} className="resistor-node">      {/* 2 kaki: kiri dan kanan. Non-polar, tanpa label +/- */}
+      <div className="resistor-body" style={{ background: 'transparent', border: 'none', height: 'auto', display: 'block', fontSize: '36px', color: '#8b5cf6', margin: '-5px 0 5px 0' }}>
         <strong>Ω</strong>
       </div>
       <div className="node-label">
@@ -26,6 +20,6 @@ export function ResistorNode({ id, data, selected }) {
         />
         Ω
       </div>
-    </div>
+    </BaseNode>
   );
 }

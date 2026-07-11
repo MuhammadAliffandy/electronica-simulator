@@ -1,138 +1,70 @@
-export function TutorPanel({ response, isLoading, t, onSuggestionClick }) {
-  if (isLoading) {
-    return (
-      <div className="tutor-panel">
-        <div className="tutor-header">
-          <div className="tutor-avatar">⚡</div>
-          <div>
-            <div className="tutor-name">ELVO AI</div>
-            <div className="tutor-role">{t.tutorRole}</div>
-          </div>
-        </div>
-        <div className="tutor-body">
-          <div className="response-card">
-            <div className="card-header">
-              <span className="card-icon">🔄</span>
-              <span className="card-title">{t.analyzing}</span>
-            </div>
-            <div className="card-content">
-              <div className="loading-shimmer" style={{ width: "90%" }}></div>
-              <div className="loading-shimmer" style={{ width: "75%" }}></div>
-              <div className="loading-shimmer" style={{ width: "60%" }}></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+import React, { useState } from 'react';
 
-  if (!response) {
-    return (
-      <div className="tutor-panel">
-        <div className="tutor-header">
-          <div className="tutor-avatar">⚡</div>
-          <div>
-            <div className="tutor-name">ELVO AI</div>
-            <div className="tutor-role">{t.tutorRole}</div>
-          </div>
-        </div>
-        <div className="tutor-body">
-          <div className="welcome-placeholder">
-            <div className="welcome-emoji">🔬</div>
-            <div className="welcome-title">{t.readyTitle}</div>
-            <div className="welcome-text">
-              {t.readyText}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+export function TutorPanel({ messages, isChatLoading, onSendMessage, chatInput, setChatInput }) {
+  const messagesEndRef = React.useRef(null);
+
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
-    <div className="tutor-panel">
+    <div className="right-panel">
       <div className="tutor-header">
-        <div className="tutor-avatar">⚡</div>
+        <div className="tutor-avatar">🤖</div>
         <div>
-          <div className="tutor-name">ELVO AI</div>
-          <div className="tutor-role">{t.tutorRole}</div>
+          <div className="tutor-title">ELVO AI</div>
+          <div className="tutor-subtitle">Active Instructor</div>
         </div>
       </div>
-      <div className="tutor-body">
-        {/* Analysis Log Card */}
-        {response.analysis_log && response.analysis_log.length > 0 && (
-          <div className="response-card analysis-card" style={{ animationDelay: "0.1s" }}>
-            <div className="card-header">
-              <span className="card-icon">📊</span>
-              <span className="card-title">{t.analysisLog}</span>
-            </div>
-            <div className="log-list">
-              {response.analysis_log.map((log, i) => (
-                <div key={i} className="log-item">
-                  {log}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* AI Insights Card */}
-        {response.ai_insights && (
-          <div className="response-card insight-card" style={{ animationDelay: "0.2s" }}>
-            <div className="card-header">
-              <span className="card-icon">🧠</span>
-              <span className="card-title">{t.aiInsights}</span>
-            </div>
-            <div className="card-content">
-              {/* Greeting */}
-              <div className="insight-section">
-                <div className="insight-label">{t.greeting}</div>
-                <div className="insight-text">
-                  {response.ai_insights.greeting}
-                </div>
+      <div className="tutor-content" style={{ display: 'flex', flexDirection: 'column', padding: '16px', gap: '12px', overflowY: 'auto', flex: 1 }}>
+        {messages.map((msg, index) => (
+          <div key={index} style={{ 
+            alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+            backgroundColor: msg.role === 'user' ? 'var(--accent-cyan)' : 'var(--bg-card)',
+            color: msg.role === 'user' ? '#000' : 'var(--text-main)',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            maxWidth: '85%',
+            fontSize: '0.9rem',
+            lineHeight: '1.4'
+          }}>
+            {msg.role === 'assistant' && msg.isSystem ? (
+              <div style={{ color: 'var(--accent-yellow)' }}>
+                <strong>💡 SIMULATION RESULT</strong><br/>
+                {msg.content}
               </div>
-
-              {/* Explanation */}
-              <div className="insight-section">
-                <div className="insight-label">{t.explanation}</div>
-                <div className="insight-text">
-                  {response.ai_insights.explanation}
-                </div>
-              </div>
-
-              {/* Hint */}
-              <div className="insight-section">
-                <div className="insight-label">{t.hint}</div>
-                <div className="insight-text">{response.ai_insights.hint}</div>
-              </div>
-
-              {/* Suggestion Tip */}
-              {response.ai_insights.suggestion_button_text && (
-                <div className="suggestion-tip" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(59, 130, 246, 0.15)', borderRadius: '8px', color: '#60a5fa', fontSize: '0.8rem', display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1rem' }}>💡</span>
-                  <span>{response.ai_insights.suggestion_button_text}</span>
-                </div>
-              )}
-            </div>
+            ) : (
+              <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+            )}
           </div>
+        ))}
+        {isChatLoading && (
+          <div style={{ alignSelf: 'flex-start', color: 'var(--text-dim)', fontSize: '0.8rem' }}>ELVO AI is typing...</div>
         )}
+        <div ref={messagesEndRef} />
+      </div>
 
-        {/* Error Log Card */}
-        {response.error_log && response.error_log.length > 0 && (
-          <div className="response-card error-card" style={{ animationDelay: "0.3s" }}>
-            <div className="card-header">
-              <span className="card-icon">⚠️</span>
-              <span className="card-title">{t.errorLog}</span>
-            </div>
-            <div className="log-list">
-              {response.error_log.map((err, i) => (
-                <div key={i} className="log-item" style={{ color: "#f87171" }}>
-                  {err}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <div className="tutor-input-area" style={{ padding: '16px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-panel)' }}>
+        <form 
+          className="tutor-input-box" 
+          onSubmit={(e) => { e.preventDefault(); onSendMessage(); }}
+          style={{ display: 'flex', alignItems: 'center', backgroundColor: 'var(--bg-base)', borderRadius: '4px', padding: '8px 12px' }}
+        >
+          <input 
+            type="text" 
+            placeholder="Ask ELVO..." 
+            disabled={isChatLoading} 
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--text-main)', outline: 'none' }}
+          />
+          <button type="submit" disabled={isChatLoading || !chatInput.trim()} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--accent-cyan)' }}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+            </svg>
+          </button>
+        </form>
       </div>
     </div>
   );
