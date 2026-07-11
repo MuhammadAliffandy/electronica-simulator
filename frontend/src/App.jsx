@@ -497,9 +497,11 @@ export default function App() {
       {/* ---- Header ---- */}
       <header className="app-header">
         <div className="header-brand">
-          <div className="header-logo">⚡</div>
+          <div className="header-logo">
+            <img src="/elvo-logo.jpg" alt="ELVO Logo" />
+          </div>
           <div>
-            <div className="header-title">Electronica Simulator</div>
+            <div className="header-title">ELVO</div>
             <div className="header-subtitle">
               {t.headerSubtitle}
             </div>
