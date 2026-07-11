@@ -9,7 +9,7 @@ export function BuzzerNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.minVoltage !== undefined ? data.minVoltage : 3} 
+          value={data.minVoltage !== undefined ? data.minVoltage : 0} 
           onChange={(e) => updateNodeData(id, { minVoltage: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />

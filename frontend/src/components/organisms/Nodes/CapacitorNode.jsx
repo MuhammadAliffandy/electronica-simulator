@@ -29,7 +29,7 @@ export function CapacitorNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.capacitance !== undefined ? data.capacitance : 100} 
+          value={data.capacitance !== undefined ? data.capacitance : 0} 
           onChange={(e) => updateNodeData(id, { capacitance: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />

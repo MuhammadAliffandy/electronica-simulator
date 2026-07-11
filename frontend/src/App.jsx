@@ -8,7 +8,6 @@ import {
   Controls,
   Background,
   MiniMap,
-  ConnectionMode,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -56,7 +55,7 @@ const defaultNodes = [
     data: {
       label: "9V Battery",
       componentType: "battery",
-      voltage: 9,
+      voltage: 0,
       sourceType: "dc",
     },
   },
@@ -67,7 +66,7 @@ const defaultNodes = [
     data: {
       label: "220Ω Resistor",
       componentType: "resistor",
-      resistance: 220,
+      resistance: 0,
     },
   },
 ];
@@ -428,7 +427,7 @@ export default function App() {
               onDragOver={onDragOver}
               onNodeDragStart={onNodeDragStart}
               nodeTypes={memoizedNodeTypes}
-              connectionMode={ConnectionMode.Loose}
+              connectionMode="loose"
               defaultEdgeOptions={{ type: 'step' }}
               fitView
             >

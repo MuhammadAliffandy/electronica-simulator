@@ -14,7 +14,7 @@ export function MotorNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.ratedVoltage !== undefined ? data.ratedVoltage : 5} 
+          value={data.ratedVoltage !== undefined ? data.ratedVoltage : 0} 
           onChange={(e) => updateNodeData(id, { ratedVoltage: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />

@@ -36,7 +36,7 @@ export function BatteryNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.voltage !== undefined ? data.voltage : 9} 
+          value={data.voltage !== undefined ? data.voltage : 0} 
           onChange={(e) => updateNodeData(id, { voltage: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />

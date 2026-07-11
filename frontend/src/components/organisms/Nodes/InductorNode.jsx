@@ -14,7 +14,7 @@ export function InductorNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.inductance !== undefined ? data.inductance : 100} 
+          value={data.inductance !== undefined ? data.inductance : 0} 
           onChange={(e) => updateNodeData(id, { inductance: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />

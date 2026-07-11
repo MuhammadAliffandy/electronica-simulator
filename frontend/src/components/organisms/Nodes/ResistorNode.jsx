@@ -14,7 +14,7 @@ export function ResistorNode({ id, data, selected }) {
       <div className="node-value">
         <input 
           type="number" 
-          value={data.resistance !== undefined ? data.resistance : 220} 
+          value={data.resistance !== undefined ? data.resistance : 0} 
           onChange={(e) => updateNodeData(id, { resistance: e.target.value === '' ? '' : Number(e.target.value) })}
           className="node-input nodrag"
         />

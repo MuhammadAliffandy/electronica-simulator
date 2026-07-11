@@ -413,6 +413,7 @@ body {
   box-shadow: 0 0 0 1px var(--accent-cyan);
 }
 .node-label {
+  display: none;
   margin-bottom: 4px;
   color: var(--text-dim);
 }
