@@ -1,5 +1,5 @@
 import { BaseNode } from "./BaseNode";
-import { Handle, Position, useReactFlow } from "@xyflow/react";
+import { Position, useReactFlow } from "@xyflow/react";
 
 const LED_SPECS = {
   Red:    { vf: 2.0, ifMax: 20, glowColor: "239,68,68" },
@@ -14,26 +14,30 @@ export function LEDNode({ id, data, selected }) {
   const isBurnt = data.ledState === "burnt" || (data.hasError && data.errorMessage && data.errorMessage.toLowerCase().includes("terbakar"));
   const isDim   = data.ledState === "dim";
   const isBright = data.ledState === "bright";
-  const isOff = !isBright && !isDim && !isBurnt;
 
   const color = data.color || "Red";
   const spec = LED_SPECS[color] || LED_SPECS.Red;
-  const gc = spec.glowColor; // rgb string
+  const gc = spec.glowColor;
 
-  // SVG LED body – bulb shape with color fill
   const ledFillColor = isBurnt ? "#6b7280" :
-    isOff   ? "#374151" :
+    !isBright && !isDim ? "#374151" :
     isDim   ? `rgba(${gc},0.35)` :
-    /* bright */ `rgba(${gc},0.85)`;
+    `rgba(${gc},0.85)`;
 
   const ledStrokeColor = isBurnt ? "#9ca3af" : `rgb(${gc})`;
   const nodeGlowStyle = isBright
     ? { boxShadow: `0 0 20px 6px rgba(${gc},0.55), 0 0 40px 10px rgba(${gc},0.25)` }
     : isDim
     ? { boxShadow: `0 0 8px 2px rgba(${gc},0.25)`, opacity: 0.75 }
-    : isOff
+    : !isBright && !isDim && !isBurnt
     ? { filter: "grayscale(70%) brightness(0.55)", opacity: 0.65 }
     : {};
+
+  // Pass handles explicitly so BaseNode does NOT auto-create defaults
+  const handles = [
+    { id: "anode",   pos: Position.Left,  type: "target" },
+    { id: "cathode", pos: Position.Right, type: "source" },
+  ];
 
   return (
     <BaseNode
@@ -42,10 +46,8 @@ export function LEDNode({ id, data, selected }) {
       data={data}
       selected={selected}
       style={nodeGlowStyle}
-      handles={[]}
-    >      {/* 2 kaki: Anode (+) di kiri, Katode (-) di kanan */}
-      <Handle type="target" position={Position.Left} id="anode" />
-      <Handle type="source" position={Position.Right} id="cathode" />
+      handles={handles}
+    >
       <div className="pin-label pin-left" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem' }}>A+</div>
       <div className="pin-label pin-right" style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.75rem' }}>K-</div>
       {/* LED SVG symbol */}
@@ -93,8 +95,8 @@ export function LEDNode({ id, data, selected }) {
         {isBurnt ? "🔥 TERBAKAR" : isDim ? "🌑 REDUP" : isBright ? "✨ MENYALA" : "⚫ MATI"}
       </div>
       <div className="node-value">
-        <select 
-          value={color} 
+        <select
+          value={color}
           onChange={(e) => updateNodeData(id, { color: e.target.value })}
           className="node-input nodrag"
           style={{ width: "70px" }}

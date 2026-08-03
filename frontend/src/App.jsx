@@ -150,9 +150,25 @@ export default function App() {
     setEdges(next.edges);
   }, [future, nodes, edges, setNodes, setEdges]);
 
-  const onNodeDragStart = useCallback(() => {
+  const onNodeDragStop = useCallback(() => {
     takeSnapshot();
   }, [takeSnapshot]);
+
+  // Keyboard shortcuts: Ctrl+Z = Undo, Ctrl+Y / Ctrl+Shift+Z = Redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [collapsedCats, setCollapsedCats] = useState({});
@@ -332,9 +348,20 @@ export default function App() {
     }
   };
 
+  const handleReset = () => {
+    if (window.confirm("Reset sirkuit ke kondisi awal?")) {
+      takeSnapshot();
+      setNodes(defaultNodes);
+      setEdges([]);
+      setResponse(null);
+      setIsRunning(false);
+    }
+  };
+
   const memoizedNodeTypes = useMemo(() => nodeTypes, []);
 
   return (
+    <ReactFlowProvider>
     <div className="app-wrapper">
       <div className="topbar">
         <div className="topbar-left">
@@ -361,6 +388,7 @@ export default function App() {
                 <div onClick={handleUndo} style={{ color: past.length === 0 ? 'var(--text-muted)' : 'inherit', pointerEvents: past.length === 0 ? 'none' : 'auto' }}>Undo (Ctrl+Z)</div>
                 <div onClick={handleRedo} style={{ color: future.length === 0 ? 'var(--text-muted)' : 'inherit', pointerEvents: future.length === 0 ? 'none' : 'auto' }}>Redo (Ctrl+Y)</div>
                 <hr style={{ borderColor: 'var(--border-color)', margin: '4px 0' }} />
+                <div onClick={handleReset}>Reset to Default</div>
                 <div onClick={handleClear}>Clear Canvas</div>
               </div>
             </div>
@@ -374,6 +402,14 @@ export default function App() {
             style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
           >
             ▶ RUN SIM
+          </button>
+          <button
+            className="canvas-run-btn"
+            onClick={handleReset}
+            style={{ position: 'relative', bottom: 'auto', right: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.7rem' }}
+            title="Reset ke kondisi awal"
+          >
+            ↺ RESET
           </button>
           <span
             className="topbar-icon"
@@ -414,41 +450,39 @@ export default function App() {
           <div className="canvas-overlay-top">
             X: 124.0 Y: 45.5 | Z-Zoom: 100%
           </div>
-          <ReactFlowProvider>
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onConnect={onConnect}
-              onEdgeDoubleClick={onEdgeDoubleClick}
-              onInit={setReactFlowInstance}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              onNodeDragStart={onNodeDragStart}
-              nodeTypes={memoizedNodeTypes}
-              connectionMode="loose"
-              defaultEdgeOptions={{ type: 'step' }}
-              fitView
-            >
-              <Background color="var(--border-color)" gap={16} size={1} />
-              <Controls />
-              <MiniMap
-                nodeColor={(node) => {
-                  switch (node.type) {
-                    case 'battery': return '#ef4444';
-                    case 'resistor': return '#8b5cf6';
-                    case 'capacitor': return '#3b82f6';
-                    default: return 'var(--accent-cyan)';
-                  }
-                }}
-                nodeStrokeColor="var(--border-color)"
-                nodeBorderRadius={4}
-                maskColor="var(--bg-panel)"
-                style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}
-              />
-            </ReactFlow>
-          </ReactFlowProvider>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onEdgeDoubleClick={onEdgeDoubleClick}
+            onInit={setReactFlowInstance}
+            onDrop={onDrop}
+            onDragOver={onDragOver}
+            onNodeDragStop={onNodeDragStop}
+            nodeTypes={memoizedNodeTypes}
+            connectionMode="loose"
+            defaultEdgeOptions={{ type: 'step' }}
+            fitView
+          >
+            <Background color="var(--border-color)" gap={16} size={1} />
+            <Controls />
+            <MiniMap
+              nodeColor={(node) => {
+                switch (node.type) {
+                  case 'battery': return '#ef4444';
+                  case 'resistor': return '#8b5cf6';
+                  case 'capacitor': return '#3b82f6';
+                  default: return 'var(--accent-cyan)';
+                }
+              }}
+              nodeStrokeColor="var(--border-color)"
+              nodeBorderRadius={4}
+              maskColor="var(--bg-panel)"
+              style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}
+            />
+          </ReactFlow>
         </div>
 
         <div className="resizer" onMouseDown={() => setIsResizingRight(true)} />
@@ -474,5 +508,6 @@ export default function App() {
         <div>T: 0.000s</div>
       </div>
     </div>
+    </ReactFlowProvider>
   );
 }
