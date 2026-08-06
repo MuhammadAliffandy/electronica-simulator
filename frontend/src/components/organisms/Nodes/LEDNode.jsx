@@ -83,11 +83,11 @@ export function LEDNode({ id, data, selected }) {
         </svg>
       </div>
       <div className="node-label">{data.label}</div>
-      <div className="led-spec-row">
-        <span className="led-spec-badge" style={{ background: `rgba(${gc},0.15)`, color: `rgb(${gc})` }}>
+      <div className="led-spec-row" style={{ display: 'flex', gap: '4px', justifyContent: 'center', marginTop: '4px', fontSize: '0.65rem' }}>
+        <span className="led-spec-badge" style={{ background: `rgba(${gc},0.15)`, color: `rgb(${gc})`, padding: '2px 4px', borderRadius: '4px' }}>
           Vf={spec.vf}V
         </span>
-        <span className="led-spec-badge" style={{ background: `rgba(${gc},0.15)`, color: `rgb(${gc})` }}>
+        <span className="led-spec-badge" style={{ background: `rgba(${gc},0.15)`, color: `rgb(${gc})`, padding: '2px 4px', borderRadius: '4px' }}>
           If≤{spec.ifMax}mA
         </span>
       </div>

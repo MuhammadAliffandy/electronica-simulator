@@ -292,11 +292,14 @@ export default function App() {
     setChatInput("");
     setIsChatLoading(true);
 
-    try {
+      const circuitCtx = response ? { ...response } : {};
+      circuitCtx.current_nodes = nodes.map(n => ({ id: n.id, type: n.type, data: n.data }));
+      circuitCtx.current_edges = edges.map(e => ({ source: e.source, target: e.target }));
+
       const res = await fetch("http://localhost:3001/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, circuitContext: response || null, lang: "id" }),
+        body: JSON.stringify({ messages: newMessages, circuitContext: circuitCtx, lang: "id" }),
       });
       const data = await res.json();
       setMessages([...newMessages, data]);
