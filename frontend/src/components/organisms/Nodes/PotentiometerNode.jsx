@@ -4,7 +4,7 @@ import { Handle, Position, useReactFlow } from "@xyflow/react";
 export function PotentiometerNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   return (
-    <BaseNode id={id} data={data} selected={selected} className="potentiometer-node" handles={[]}>      <Handle type="target" position={Position.Left} id="pin1" />
+    <BaseNode id={id} data={data} selected={selected} className="potentiometer-node" handles={[]}>      <Handle type="source" position={Position.Left} id="pin1" />
       <Handle type="source" position={Position.Bottom} id="wiper" />
       <Handle type="source" position={Position.Right} id="pin3" />
       <span className="node-emoji">🎛️</span>

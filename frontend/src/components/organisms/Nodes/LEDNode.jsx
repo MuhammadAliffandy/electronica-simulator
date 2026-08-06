@@ -35,7 +35,7 @@ export function LEDNode({ id, data, selected }) {
 
   // Pass handles explicitly so BaseNode does NOT auto-create defaults
   const handles = [
-    { id: "anode",   pos: Position.Left,  type: "target" },
+    { id: "anode",   pos: Position.Left,  type: "source" },
     { id: "cathode", pos: Position.Right, type: "source" },
   ];
 

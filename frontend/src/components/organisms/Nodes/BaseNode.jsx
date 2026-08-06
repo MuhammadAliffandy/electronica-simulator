@@ -13,9 +13,9 @@ import { ErrorBadge } from "../../molecules/ErrorBadge";
  * @param {Array} handles - Array of handle definitions e.g. [{id: "left", pos: Position.Left, type: "source"}]
  */
 export function BaseNode({ id, data, selected, className, handles, style, children }) {
-  // Default 2-way handles if not provided
+  // Default 2-way handles if not provided. Both 'source' to allow dragging out from either end.
   const defaultHandles = [
-    { id: "left", pos: Position.Left, type: "target" },
+    { id: "left", pos: Position.Left, type: "source" },
     { id: "right", pos: Position.Right, type: "source" }
   ];
   

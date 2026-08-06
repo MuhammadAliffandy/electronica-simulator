@@ -6,9 +6,9 @@ export function TransistorNode({ id, data, selected }) {
   const isNPN = (data.transistorType || 'npn') === 'npn';
   return (
     <BaseNode id={id} data={data} selected={selected} className="transistor-node" handles={[]}>      {/* Base: kiri tengah */}
-      <Handle type="target" position={Position.Left} id="base" style={{ top: '50%' }} />
+      <Handle type="source" position={Position.Left} id="base" style={{ top: '50%' }} />
       {/* C di atas */}
-      <Handle type="target" position={Position.Top} id="collector" style={{ left: '50%' }} />
+      <Handle type="source" position={Position.Top} id="collector" style={{ left: '50%' }} />
       {/* Emitter: bawah tengah */}
       <Handle type="source" position={Position.Bottom} id="emitter" style={{ left: '50%' }} />
 

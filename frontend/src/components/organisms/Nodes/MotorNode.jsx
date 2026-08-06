@@ -5,7 +5,7 @@ export function MotorNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   return (
     <BaseNode id={id} data={data} selected={selected} className="motor-node" handles={[]}>      {/* 2 kaki: Left(+) / Right(-) dengan label polaritas */}
-      <Handle type="target" position={Position.Left} id="pos" />
+      <Handle type="source" position={Position.Left} id="pos" />
       <Handle type="source" position={Position.Right} id="neg" />
       <div className="pin-label pin-left" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.9rem' }}>+</div>
       <div className="pin-label pin-right" style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.9rem' }}>−</div>

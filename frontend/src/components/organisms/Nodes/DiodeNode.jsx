@@ -5,7 +5,7 @@ export function DiodeNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
   return (
     <BaseNode id={id} data={data} selected={selected} className="diode-node" handles={[]}>      {/* 2 kaki: Anode (+) kiri, Katode (-) kanan */}
-      <Handle type="target" position={Position.Left} id="anode" />
+      <Handle type="source" position={Position.Left} id="anode" />
       <Handle type="source" position={Position.Right} id="cathode" />
       <div className="pin-label pin-left" style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.75rem' }}>A+</div>
       <div className="pin-label pin-right" style={{ color: '#60a5fa', fontWeight: 'bold', fontSize: '0.75rem' }}>K-</div>
