@@ -301,7 +301,7 @@ export default function App() {
     setMessages(newMessages);
     setChatInput("");
     setIsChatLoading(true);
-
+    try {
       const circuitCtx = response ? { ...response } : {};
       circuitCtx.current_nodes = nodes.map(n => ({ id: n.id, type: n.type, data: n.data }));
       circuitCtx.current_edges = edges.map(e => ({ source: e.source, target: e.target }));
