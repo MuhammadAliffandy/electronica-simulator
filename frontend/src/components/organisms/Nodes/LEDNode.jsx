@@ -11,9 +11,9 @@ const LED_SPECS = {
 
 export function LEDNode({ id, data, selected }) {
   const { updateNodeData } = useReactFlow();
-  const isBurnt = data.ledState === "burnt" || (data.hasError && data.errorMessage && data.errorMessage.toLowerCase().includes("terbakar"));
+  const isBurnt = data.ledState === "burnt" || data.ledState === "burn" || (data.hasError && data.errorMessage && data.errorMessage.toLowerCase().includes("terbakar"));
   const isDim   = data.ledState === "dim";
-  const isBright = data.ledState === "bright";
+  const isBright = data.ledState === "bright" || data.ledState === "on";
 
   const color = data.color || "Red";
   const spec = LED_SPECS[color] || LED_SPECS.Red;

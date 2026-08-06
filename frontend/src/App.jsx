@@ -254,23 +254,25 @@ export default function App() {
       if (data.nodes_state) {
         setNodes((nds) =>
           nds.map((n) => {
-            if (data.nodes_state[n.id]) {
-              return {
-                ...n,
-                data: {
-                  ...n.data,
-                  ...data.nodes_state[n.id],
-                  isSuccess: data.api_status === "ACTIVE",
-                },
+            let newData = { ...n.data };
+            if (data.nodes_state && data.nodes_state[n.id]) {
+              newData = {
+                ...newData,
+                ...data.nodes_state[n.id],
+                isSuccess: data.api_status === "ACTIVE",
               };
             }
             if (data.error_nodes && data.error_nodes[n.id]) {
-              return {
-                ...n,
-                data: { ...n.data, hasError: true, errorMessage: data.error_nodes[n.id] },
+              newData = {
+                ...newData,
+                hasError: true,
+                errorMessage: data.error_nodes[n.id]
               };
+            } else {
+              newData.hasError = false;
+              newData.errorMessage = null;
             }
-            return n;
+            return { ...n, data: newData };
           })
         );
       }
