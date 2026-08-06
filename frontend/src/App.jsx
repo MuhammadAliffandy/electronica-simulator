@@ -285,6 +285,16 @@ export default function App() {
     setIsLoading(false);
   };
 
+  const handleStop = () => {
+    setIsRunning(false);
+    setEdges(eds => eds.map(e => ({ ...e, animated: false })));
+    setNodes(nds => nds.map(n => {
+      const { isSuccess, hasError, errorMessage, ledState, brightness, reading, ...restData } = n.data;
+      return { ...n, data: restData };
+    }));
+    setResponse(null);
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
     const newMessages = [...messages, { role: 'user', content: chatInput }];
@@ -401,13 +411,23 @@ export default function App() {
           </div>
         </div>
         <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <button
-            className="canvas-run-btn"
-            onClick={handleSimulate}
-            style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
-          >
-            ▶ RUN SIM
-          </button>
+          {isRunning ? (
+            <button
+              className="canvas-run-btn"
+              onClick={handleStop}
+              style={{ position: 'relative', bottom: 'auto', right: 'auto', background: '#ef4444', borderColor: '#ef4444' }}
+            >
+              ⏹ STOP SIM
+            </button>
+          ) : (
+            <button
+              className="canvas-run-btn"
+              onClick={handleSimulate}
+              style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
+            >
+              ▶ RUN SIM
+            </button>
+          )}
           <button
             className="canvas-run-btn"
             onClick={handleReset}
