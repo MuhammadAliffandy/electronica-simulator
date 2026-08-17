@@ -74,7 +74,7 @@ const defaultNodes = [
   },
 ];
 
-let nodeIdCounter = 1;
+let nodeIdCounter = 100;
 
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState(defaultNodes);
