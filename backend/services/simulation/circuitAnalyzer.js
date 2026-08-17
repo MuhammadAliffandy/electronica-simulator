@@ -2,6 +2,7 @@ const { buildAdjacencyList, checkConnectivity } = require('./graphUtils');
 const { calculateTotalResistance } = require('./resistanceCalculator');
 const { calculateSemiconductors } = require('./semiconductorLogic');
 const { calculateMultimeterReadings } = require('./multimeterLogic');
+const { calculateACImpedance } = require('./impedanceCalculator');
 
 /**
  * Run deterministic circuit validation and return analysis log + error log.
@@ -111,13 +112,42 @@ function validateCircuit(nodes, edges) {
           analysisLog.push(`📌 Langkah 2 — Tegangan Jatuh Semikonduktor: ${semiResult.dropDetails.join(" + ")} → ΣVf = ${semiResult.totalVoltageDrop.toFixed(2)}V`);
           analysisLog.push(`📌 Langkah 3 — Tegangan Efektif: Veff = Vs - ΣVf = ${voltage}V - ${semiResult.totalVoltageDrop.toFixed(2)}V = ${semiResult.effectiveVoltage.toFixed(2)}V`);
         } else {
-          analysisLog.push(`📌 Langkah 2 — Tegangan Efektif: Veff = Vs = ${voltage}V (tidak ada komponen semikonduktor)`);
+          analysisLog.push(`📌 Langkah 2 — Tegangan Efektif: Veff = Vs = ${voltage}V`);
         }
 
-        if (totalHambatanUniversal > 0) {
-          const currentMa = (semiResult.effectiveVoltage / totalHambatanUniversal) * 1000;
-
-          analysisLog.push(`📌 Langkah 4 — Hukum Ohm: I = Veff / R_total = ${semiResult.effectiveVoltage.toFixed(2)}V / ${totalHambatanUniversal.toFixed(1)}Ω = ${currentMa.toFixed(2)} mA`);
+        if (totalHambatanUniversal > 0 || (isAC && hasLoop)) {
+          let currentMa = 0;
+          let currentA = 0;
+          
+          if (isAC) {
+            const freq = battery.data?.frequency || 50;
+            const acResult = calculateACImpedance(nodes, edges, freq, totalHambatanUniversal);
+            
+            if (acResult.hasACComponents) {
+              analysisLog.push(`📌 Langkah Tambahan (AC RLC) — Frekuensi: ${freq} Hz`);
+              if (acResult.Xl > 0) analysisLog.push(`📌 Reaktansi Induktif (XL): ${acResult.Xl.toFixed(2)} Ω`);
+              if (acResult.Xc > 0) analysisLog.push(`📌 Reaktansi Kapasitif (XC): ${acResult.Xc.toFixed(2)} Ω`);
+              analysisLog.push(`📌 Impedansi Total (Z): ${acResult.Z.toFixed(2)} Ω`);
+              analysisLog.push(`📌 Sudut Fasa (θ): ${acResult.phaseAngleDeg.toFixed(2)}°`);
+              
+              currentA = acResult.Z > 0 ? (semiResult.effectiveVoltage / acResult.Z) : 0;
+              currentMa = currentA * 1000;
+              
+              analysisLog.push(`📌 Langkah 4 — Hukum Ohm AC: I = Veff / Z = ${semiResult.effectiveVoltage.toFixed(2)}V / ${acResult.Z.toFixed(2)}Ω = ${currentMa.toFixed(2)} mA`);
+              
+              // VR, VL, VC
+              if (totalHambatanUniversal > 0) analysisLog.push(`📌 Drop Tegangan Resistor (VR): ${(currentA * totalHambatanUniversal).toFixed(2)} V`);
+              if (acResult.Xl > 0) analysisLog.push(`📌 Drop Tegangan Induktor (VL): ${(currentA * acResult.Xl).toFixed(2)} V`);
+              if (acResult.Xc > 0) analysisLog.push(`📌 Drop Tegangan Kapasitor (VC): ${(currentA * acResult.Xc).toFixed(2)} V`);
+              
+            } else {
+              currentMa = (semiResult.effectiveVoltage / totalHambatanUniversal) * 1000;
+              analysisLog.push(`📌 Langkah 4 — Hukum Ohm: I = Veff / R_total = ${semiResult.effectiveVoltage.toFixed(2)}V / ${totalHambatanUniversal.toFixed(1)}Ω = ${currentMa.toFixed(2)} mA`);
+            }
+          } else {
+            currentMa = (semiResult.effectiveVoltage / totalHambatanUniversal) * 1000;
+            analysisLog.push(`📌 Langkah 4 — Hukum Ohm: I = Veff / R_total = ${semiResult.effectiveVoltage.toFixed(2)}V / ${totalHambatanUniversal.toFixed(1)}Ω = ${currentMa.toFixed(2)} mA`);
+          }
 
           let naratif = `✅ Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${currentMa.toFixed(2)} mA`;
           analysisLog.push(naratif);
@@ -157,7 +187,7 @@ function validateCircuit(nodes, edges) {
   }
 
   // 4. Multimeter logic
-  calculateMultimeterReadings(multimeters, battery, totalHambatanUniversal, hasLoop, burnoutRisk, hasOpenPins, nodes_state);
+  calculateMultimeterReadings(multimeters, battery, totalHambatanUniversal, hasLoop, burnoutRisk, hasOpenPins, nodes_state, nodes, edges, adj);
 
   return {
     analysisLog,

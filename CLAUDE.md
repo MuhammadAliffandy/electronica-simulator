@@ -4,7 +4,7 @@ This file provides context for AI assistants working on this codebase.
 
 ## Project Overview
 
-An interactive, full-stack **AI Electronics Simulator** for learning circuit fundamentals through drag-and-drop building and real-time AI tutoring. Users place components (batteries, resistors, LEDs, capacitors, switches, motors, buzzers) on a canvas, wire them together, and receive guided feedback from "Sparky" — an AI tutor that teaches Ohm's Law the fun way.
+An interactive, full-stack **AI Electronics Simulator** for learning circuit fundamentals through drag-and-drop building and real-time AI tutoring. Users place components (batteries, resistors, LEDs, capacitors, switches, motors, buzzers) on a canvas, wire them together, and receive guided feedback from "ELVO AI" — an AI tutor that teaches Ohm's Law the fun way.
 
 **AI Fallback Chain**: OpenAI → Ollama (local LLM) → Mock tutor. The server auto-detects which providers are available at runtime.
 
@@ -51,7 +51,7 @@ EletronicaSimulator/
 - **Switch state awareness**: Detects open switches that prevent current flow.
 - **Motor/Buzzer warnings**: Flags high current draw and missing current-limiting resistors.
 
-### AI Tutor Agent ("Sparky")
+### AI Tutor Agent ("ELVO AI")
 - Persona: Friendly, gamified physics tutor using the "fun way" philosophy.
 - **Core rule**: NEVER gives direct answers. Always guides with hints.
 - **Dual mode**: Uses OpenAI API → falls back to Ollama local LLM → falls back to deterministic mock responses.

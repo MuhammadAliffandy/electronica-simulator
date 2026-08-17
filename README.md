@@ -50,7 +50,7 @@ Without an API key, the app uses a smart mock AI tutor.
 1. **Drag components** from the palette onto the canvas
 2. **Connect nodes** by dragging from one handle to another
 3. **Click "RUN SIMULATION & ASK AI"** to get circuit analysis
-4. **Read Sparky's feedback** in the right panel — learn Ohm's Law the fun way!
+4. **Read ELVO AI's feedback** in the right panel — learn Ohm's Law the fun way!
 
 ## 🛠️ Tech Stack
 - **Frontend**: React, Vite, React Flow (@xyflow/react)

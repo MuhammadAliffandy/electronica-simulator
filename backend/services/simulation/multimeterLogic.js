@@ -1,4 +1,29 @@
-function calculateMultimeterReadings(multimeters, battery, totalHambatanUniversal, hasLoop, burnoutRisk, hasOpenPins, nodes_state) {
+function getResistanceBetweenNodes(startNodeId, targetNodeId, nodes, adj) {
+  const queue = [[startNodeId, 0]];
+  const visited = new Set([startNodeId]);
+  
+  while (queue.length > 0) {
+    const [curId, currentRes] = queue.shift();
+    const node = nodes.find(n => n.id === curId);
+    
+    let r = 0;
+    if (node && (node.type === 'resistor' || node.data?.componentType === 'resistor')) {
+      r = node.data?.resistance || 0;
+    }
+    
+    if (curId === targetNodeId) return currentRes + r;
+    
+    (adj[curId] || []).forEach(neighbor => {
+      if (!visited.has(neighbor.node)) {
+        visited.add(neighbor.node);
+        queue.push([neighbor.node, currentRes + r]);
+      }
+    });
+  }
+  return 0; // Infinity or 0 if open loop
+}
+
+function calculateMultimeterReadings(multimeters, battery, totalHambatanUniversal, hasLoop, burnoutRisk, hasOpenPins, nodes_state, nodes, edges, adj) {
   multimeters.forEach(mm => {
     const mmMode = mm.data?.mode || "V";
     let reading = "0.00";
@@ -18,9 +43,22 @@ function calculateMultimeterReadings(multimeters, battery, totalHambatanUniversa
       } else if (mmMode === "Ω") {
          reading = totalHambatanUniversal.toFixed(1);
       }
-    } else if (mmMode === "Ω" && !hasOpenPins) {
-      // Multimeter bisa mengukur hambatan meskipun baterai tidak terpasang
-      reading = totalHambatanUniversal.toFixed(1);
+    } else if (mmMode === "Ω") {
+      // Coba lacak hambatan spesifik antar dua probe multimeter
+      const conns = adj[mm.id] || [];
+      const redPin = conns.find(c => c.fromPin === 'red' || c.toPin === 'red')?.node;
+      const blackPin = conns.find(c => c.fromPin === 'black' || c.toPin === 'black')?.node;
+      
+      if (redPin && blackPin) {
+        const measuredR = getResistanceBetweenNodes(redPin, blackPin, nodes, adj);
+        if (measuredR > 0) {
+          reading = measuredR.toFixed(1);
+        } else {
+          reading = totalHambatanUniversal.toFixed(1);
+        }
+      } else {
+        reading = "0.00";
+      }
     }
     
     nodes_state[mm.id] = { reading, unit };

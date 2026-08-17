@@ -69,6 +69,32 @@ function calculateSemiconductors(nodes, edges, adj, batteries, diodes, transisto
   let effectiveVoltage = voltage - totalVoltageDrop;
   if (effectiveVoltage < 0) effectiveVoltage = 0;
 
+  // Helper to trace resistance from a pin to battery
+  function getLoopResistance(startNodeId, targetNodeId, excludeNodeId) {
+    const queue = [[startNodeId, 0]];
+    const visited = new Set([startNodeId, excludeNodeId]);
+    
+    while (queue.length > 0) {
+      const [curId, currentRes] = queue.shift();
+      const node = nodes.find(n => n.id === curId);
+      
+      let r = 0;
+      if (node && (node.type === 'resistor' || node.data?.componentType === 'resistor')) {
+        r = node.data?.resistance || 0;
+      }
+      
+      if (curId === targetNodeId) return currentRes + r;
+      
+      (adj[curId] || []).forEach(neighbor => {
+        if (!visited.has(neighbor.node)) {
+          visited.add(neighbor.node);
+          queue.push([neighbor.node, currentRes + r]);
+        }
+      });
+    }
+    return 0; 
+  }
+
   // 2. TRANSISTORS
   transistors.forEach(t => {
     const conns = adj[t.id] || [];
@@ -96,14 +122,21 @@ function calculateSemiconductors(nodes, edges, adj, batteries, diodes, transisto
     }
 
     if (hasBase && hasCollector && hasEmitter) {
-      const baseNeighbors = conns.filter(c => c.fromPin === 'base' || c.toPin === 'base');
+      // Find nodes connected to each pin
+      const baseNodeId = conns.find(c => c.fromPin === 'base' || c.toPin === 'base')?.node;
+      const collectorNodeId = conns.find(c => c.fromPin === 'collector' || c.toPin === 'collector')?.node;
+      
       let Rb = 0;
-      baseNeighbors.forEach(neighbor => {
-        const neighborNode = nodes.find(n => n.id === neighbor.node);
-        if (neighborNode && (neighborNode.type === 'resistor' || neighborNode.data?.componentType === 'resistor')) {
-          Rb += (neighborNode.data?.resistance || 10000);
-        }
-      });
+      let Rc = 0;
+      
+      if (battery) {
+         Rb = getLoopResistance(baseNodeId, battery.id, t.id);
+         Rc = getLoopResistance(collectorNodeId, battery.id, t.id);
+      } else {
+         // Fallback if no battery but analyzing
+         Rb = 10000;
+         Rc = totalResistance;
+      }
 
       const Vbe = 0.7;
       const VbeStr = `${Vbe}V`;
@@ -112,23 +145,27 @@ function calculateSemiconductors(nodes, edges, adj, batteries, diodes, transisto
 
       if (Rb > 0) {
         IB_mA = ((voltage - Vbe) / Rb) * 1000;
+        if (IB_mA < 0) IB_mA = 0;
         IBFormula = `IB = (Vs - Vbe) / Rb = (${voltage}V - ${VbeStr}) / ${Rb}Ω = ${IB_mA.toFixed(3)} mA`;
       } else {
         IB_mA = ((voltage - Vbe) / 1000) * 1000;
-        IBFormula = `IB ≈ (Vs - Vbe) / 1kΩ (asumsi) = ${IB_mA.toFixed(3)} mA`;
+        if (IB_mA < 0) IB_mA = 0;
+        IBFormula = `IB ≈ (Vs - Vbe) / 1kΩ (asumsi, awas terbakar!) = ${IB_mA.toFixed(3)} mA`;
       }
 
       const IC_mA = hFE * IB_mA;
-      const ICsat_mA = (effectiveVoltage / Math.max(totalResistance, 10)) * 1000;
+      // Gunakan Rc khusus untuk kolektor
+      const ICsat_mA = (effectiveVoltage / Math.max(Rc, 10)) * 1000;
       const isSaturated = IC_mA >= ICsat_mA;
 
       analysisLog.push(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       analysisLog.push(`🔬 ANALISIS TRANSISTOR ${isNPN ? 'NPN' : 'PNP'} (${isNPN ? 'BC547' : 'BC557'})`);
       analysisLog.push(`📌 Parameter: hFE = ${hFE}, Vbe = ${VbeStr}`);
+      analysisLog.push(`📌 Hambatan Terdeteksi: Rb = ${Rb}Ω, Rc = ${Rc}Ω`);
       analysisLog.push(`📌 Langkah 1 — Arus Basis: ${IBFormula}`);
       analysisLog.push(`📌 Langkah 2 — Arus Kolektor: IC = hFE × IB = ${hFE} × ${IB_mA.toFixed(3)}mA = ${IC_mA.toFixed(2)} mA`);
-      if (totalResistance > 0) {
-        analysisLog.push(`📌 Langkah 3 — IC saturasi: IC(sat) = Veff / Rc = ${effectiveVoltage.toFixed(2)}V / ${totalResistance.toFixed(1)}Ω = ${ICsat_mA.toFixed(2)} mA`);
+      if (Rc > 0) {
+        analysisLog.push(`📌 Langkah 3 — IC saturasi: IC(sat) = Veff / Rc = ${effectiveVoltage.toFixed(2)}V / ${Rc.toFixed(1)}Ω = ${ICsat_mA.toFixed(2)} mA`);
       }
       analysisLog.push(`📌 Status Transistor: ${isSaturated ? '🟢 SATURASI — transistor ON penuh, arus mengalir maksimum' : '🟡 AKTIF (Linear) — transistor menguat, IC = hFE × IB'}`);
 

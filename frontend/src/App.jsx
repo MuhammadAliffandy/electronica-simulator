@@ -53,7 +53,7 @@ const defaultNodes = [
     type: "battery",
     position: { x: 150, y: 150 },
     data: {
-      label: "9V Battery",
+      label: "DC Source",
       componentType: "battery",
       voltage: 0,
       sourceType: "dc",
@@ -64,7 +64,7 @@ const defaultNodes = [
     type: "resistor",
     position: { x: 350, y: 100 },
     data: {
-      label: "220Ω Resistor",
+      label: "Resistor",
       componentType: "resistor",
       resistance: 0,
     },
@@ -382,7 +382,7 @@ export default function App() {
         <div className="topbar-left">
           <div className="topbar-brand">
             <div className="topbar-logo">
-              <img src="/elvo-logo.jpg" alt="ELVO Logo" />
+              <img src="/elvo-logo.svg" alt="ELVO Logo" />
             </div>
             <div className="topbar-title">ELVO Simulate</div>
           </div>

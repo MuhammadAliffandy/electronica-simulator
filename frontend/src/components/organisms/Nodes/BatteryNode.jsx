@@ -42,6 +42,17 @@ export function BatteryNode({ id, data, selected }) {
         />
         V
       </div>
+      {isAC && (
+        <div className="node-value" style={{ marginTop: '4px' }}>
+          <input 
+            type="number" 
+            value={data.frequency !== undefined ? data.frequency : 50} 
+            onChange={(e) => updateNodeData(id, { frequency: e.target.value === '' ? '' : Number(e.target.value) })}
+            className="node-input nodrag"
+          />
+          Hz
+        </div>
+      )}
     </BaseNode>
   );
 }
