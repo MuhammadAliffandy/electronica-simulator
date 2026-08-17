@@ -29,6 +29,8 @@ import { MultimeterNode } from "./components/organisms/Nodes/MultimeterNode";
 import { OscilloscopeNode } from "./components/organisms/Nodes/OscilloscopeNode";
 import { TransistorNode } from "./components/organisms/Nodes/TransistorNode";
 import { WireJunctionNode } from "./components/organisms/Nodes/WireJunctionNode";
+import { SettingsModal } from "./components/organisms/SettingsModal";
+import { initLocalAI, chatLocalAI } from "./services/localAiService";
 
 const nodeTypes = {
   battery: BatteryNode,
@@ -117,6 +119,12 @@ export default function App() {
 
   const [past, setPast] = useState([]);
   const [future, setFuture] = useState([]);
+
+  // Settings & Local AI State
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [aiMode, setAiMode] = useState('cloud'); // 'cloud' | 'local'
+  const [localAiProgress, setLocalAiProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const takeSnapshot = useCallback(() => {
     setPast((p) => [
@@ -295,6 +303,26 @@ export default function App() {
     setResponse(null);
   };
 
+  const handleDownloadLocalAi = async () => {
+    setIsDownloading(true);
+    try {
+      await initLocalAI((progress) => {
+        // progress is usually between 0 and 1
+        // We will parse it to percentage if it provides a text or number
+        if (typeof progress === 'number') {
+           setLocalAiProgress(progress * 100);
+        } else if (progress?.progress !== undefined) {
+           setLocalAiProgress(progress.progress * 100);
+        }
+      });
+      setLocalAiProgress(100);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to initialize Local AI Engine. Ensure your browser supports WebGPU.");
+    }
+    setIsDownloading(false);
+  };
+
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return;
     const newMessages = [...messages, { role: 'user', content: chatInput }];
@@ -306,16 +334,23 @@ export default function App() {
       circuitCtx.current_nodes = nodes.map(n => ({ id: n.id, type: n.type, data: n.data }));
       circuitCtx.current_edges = edges.map(e => ({ source: e.source, target: e.target }));
 
-      const res = await fetch("http://localhost:3001/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages, circuitContext: circuitCtx, lang: "id" }),
-      });
-      const data = await res.json();
-      setMessages([...newMessages, data]);
+      if (aiMode === 'local') {
+        // Run completely offline in the browser via WebLLM
+        const localData = await chatLocalAI(newMessages, circuitCtx);
+        setMessages([...newMessages, localData]);
+      } else {
+        // Run via Node Backend / Cloud
+        const res = await fetch("http://localhost:3001/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: newMessages, circuitContext: circuitCtx, lang: "id" }),
+        });
+        const data = await res.json();
+        setMessages([...newMessages, data]);
+      }
     } catch (err) {
       console.error(err);
-      setMessages([...newMessages, { role: 'assistant', content: 'Maaf, aku sedang tidak bisa merespons saat ini.' }]);
+      setMessages([...newMessages, { role: 'assistant', content: 'Maaf, aku sedang tidak bisa merespons saat ini. (Pastikan AI Engine sudah siap atau server menyala)' }]);
     }
     setIsChatLoading(false);
   };
@@ -407,6 +442,7 @@ export default function App() {
                 <div onClick={handleClear}>Clear Canvas</div>
               </div>
             </div>
+            <span onClick={() => setIsSettingsOpen(true)}>Settings</span>
             <span onClick={handleSimulate}>Simulate</span>
           </div>
         </div>
@@ -532,6 +568,16 @@ export default function App() {
         </div>
         <div>T: 0.000s</div>
       </div>
+      
+      <SettingsModal 
+        isOpen={isSettingsOpen} 
+        onClose={() => setIsSettingsOpen(false)}
+        aiMode={aiMode}
+        setAiMode={setAiMode}
+        localAiProgress={localAiProgress}
+        onDownloadLocalAi={handleDownloadLocalAi}
+        isDownloading={isDownloading}
+      />
     </div>
     </ReactFlowProvider>
   );
