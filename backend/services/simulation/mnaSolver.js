@@ -310,7 +310,9 @@ class MNAEngine {
           this.stampVoltageSource(na, nk, Vf, vSourceIdx++);
           this.stampResistor(na, nk, 1e-6); // Small internal resistance
         } else {
-          this.stampVoltageSource(na, nk, 0, vSourceIdx++); // Dummy source, zero current
+          // Dummy source to satisfy matrix size without shorting circuit
+          const mRow = this.N_vars + vSourceIdx++;
+          this.A[mRow][mRow] = 1;
           this.stampResistor(na, nk, 1e9); // Open circuit
         }
       }
@@ -327,9 +329,12 @@ class MNAEngine {
         
         // Base-Emitter Diode (Vbe)
         if (state === 'OFF') {
-          this.stampVoltageSource(nb, ne, 0, vSourceIdx++);
+          let mRow = this.N_vars + vSourceIdx++;
+          this.A[mRow][mRow] = 1;
           this.stampResistor(nb, ne, 1e9);
-          this.stampVoltageSource(nc, ne, 0, vSourceIdx++);
+          
+          mRow = this.N_vars + vSourceIdx++;
+          this.A[mRow][mRow] = 1;
           this.stampResistor(nc, ne, 1e9);
         } else if (state === 'ACTIVE') {
           // BE is ON (Vbe drop)
@@ -340,8 +345,9 @@ class MNAEngine {
           const IB = this.compStates[`${n.id}_IB`] || 0;
           const IC = hFE * IB;
           this.stampCurrentSource(nc, ne, IC);
-          // Dummy Vce source just to keep matrix size consistent
-          this.stampVoltageSource(nc, ne, 0, vSourceIdx++);
+          
+          let mRow = this.N_vars + vSourceIdx++;
+          this.A[mRow][mRow] = 1; // Dummy Vce
           this.stampResistor(nc, ne, 1e9); // High impedance CE
         } else if (state === 'SATURATION') {
           // BE is ON
