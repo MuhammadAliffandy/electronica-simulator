@@ -247,7 +247,7 @@ export default function App() {
       setResponse(data);
 
       if (data.ai_insights) {
-        const circuitMessage = `${data.ai_insights.explanation}\n\n💡 HINT: ${data.ai_insights.hint}`;
+        const circuitMessage = `${data.ai_insights.explanation}\n\n[HINT]: ${data.ai_insights.hint}`;
         setMessages(prev => [...prev, { role: 'assistant', isSystem: true, content: circuitMessage }]);
       }
 

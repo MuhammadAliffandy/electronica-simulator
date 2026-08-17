@@ -7,7 +7,7 @@ PERSONA RULES:
 - You speak like an encouraging lab partner who genuinely loves circuits.
 - Use the "fun way" teaching philosophy: guide through curiosity, NEVER give direct answers.
 - Always relate concepts back to Ohm's Law (V = I × R) and basic circuit principles.
-- Use emojis sparingly but effectively (⚡🔋💡🔧).
+- Professional and encouraging tone.
 - If the student makes a mistake, celebrate it as a learning opportunity.
 - NEVER reveal the exact solution. Give progressive hints that lead to discovery.`;
 
@@ -24,7 +24,7 @@ You MUST respond with valid JSON matching this EXACT schema:
   "greeting": "A short, encouraging greeting (1-2 sentences)",
   "explanation": "A conceptual explanation of what's happening in the circuit. Reference Ohm's Law. Keep it fun and educational (2-4 sentences).",
   "hint": "A guiding question or hint to help the student understand or fix their circuit. Never give the direct answer (1-2 sentences).",
-  "suggestion_button_text": "A short, fun call-to-action text for a tip (e.g., 'Try adding a resistor! 🔧')"
+  "suggestion_button_text": "A short, fun call-to-action text for a tip (e.g., 'Try adding a resistor!')"
 }
 
 IMPORTANT: Return ONLY the JSON object, no markdown, no code fences, no extra text.`;
@@ -38,10 +38,10 @@ function generateMockAIResponse(validationResult, lang) {
   if (lang === "id") {
     if (burnoutRisk) {
       return {
-        greeting: "Halo, penjelajah rangkaian yang berani! ⚡ Sepertinya kamu sedang mencari bahaya!",
-        explanation: "LED kamu terhubung langsung ke baterai — itu seperti minum dari selang pemadam kebakaran! 🔥 Dalam elektronika, Hukum Ohm (V = I × R) mengatakan bahwa tanpa hambatan, arus akan menjadi terlalu tinggi. LED merah standar hanya bisa menangani sekitar 20mA dengan aman.",
-        hint: "Komponen apa yang bisa kamu letakkan di antara baterai dan LED untuk membatasi aliran arus? Pikirkan tentang V = I × R... apa yang terjadi ketika R sangat kecil (atau nol)? 🤔",
-        suggestion_button_text: "Coba tambahkan resistor! 🔧",
+        greeting: "Halo, penjelajah rangkaian yang berani! Sepertinya kamu sedang mencari bahaya!",
+        explanation: "LED kamu terhubung langsung ke baterai — itu seperti minum dari selang pemadam kebakaran! Dalam elektronika, Hukum Ohm (V = I × R) mengatakan bahwa tanpa hambatan, arus akan menjadi terlalu tinggi. LED merah standar hanya bisa menangani sekitar 20mA dengan aman.",
+        hint: "Komponen apa yang bisa kamu letakkan di antara baterai dan LED untuk membatasi aliran arus? Pikirkan tentang V = I × R... apa yang terjadi ketika R sangat kecil (atau nol)?",
+        suggestion_button_text: "Coba tambahkan resistor!",
       };
     }
 
@@ -65,10 +65,10 @@ function generateMockAIResponse(validationResult, lang) {
   // English fallback
   if (burnoutRisk) {
     return {
-      greeting: "Hey there, brave circuit explorer! ⚡ Looks like you're living dangerously!",
-      explanation: "Your LED is connected straight to the battery — that's like drinking from a fire hose! 🔥 In electronics, Ohm's Law (V = I × R) tells us that without resistance, the current goes way too high. A standard red LED can only handle about 20mA safely.",
-      hint: "What component could you place between the battery and the LED to limit the current flow? Think about V = I × R... what happens when R is very small (or zero)? 🤔",
-      suggestion_button_text: "Try adding a resistor! 🔧",
+      greeting: "Hey there, brave circuit explorer! Looks like you're living dangerously!",
+      explanation: "Your LED is connected straight to the battery — that's like drinking from a fire hose! In electronics, Ohm's Law (V = I × R) tells us that without resistance, the current goes way too high. A standard red LED can only handle about 20mA safely.",
+      hint: "What component could you place between the battery and the LED to limit the current flow? Think about V = I × R... what happens when R is very small (or zero)?",
+      suggestion_button_text: "Try adding a resistor!",
     };
   }
 
@@ -210,7 +210,7 @@ PERSONA RULES:
 - You speak like an encouraging lab partner who genuinely loves circuits.
 - Use the "fun way" teaching philosophy: guide through curiosity.
 - Always relate concepts back to Ohm's Law (V = I × R) and basic circuit principles.
-- Use emojis sparingly but effectively (⚡🔋💡🔧).
+- Professional and encouraging tone.
 - Be concise in your responses (1-3 paragraphs max).`;
 
   if (lang === "id") {
