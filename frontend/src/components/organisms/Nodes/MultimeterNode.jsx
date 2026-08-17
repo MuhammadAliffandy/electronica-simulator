@@ -16,7 +16,15 @@ export function MultimeterNode({ id, data, selected }) {
       </div>
       <div className="node-label">{data.label}</div>
       <div className="node-value">
-        <select value={data.mode || "V"} onChange={(e) => updateNodeData(id, { mode: e.target.value })} className="node-input nodrag" style={{ width: '90px' }}>
+        <select 
+          value={data.mode || "V"} 
+          onChange={(e) => {
+            updateNodeData(id, { mode: e.target.value });
+            if (window.triggerSimulation) window.triggerSimulation();
+          }} 
+          className="node-input nodrag" 
+          style={{ width: '90px' }}
+        >
           <option value="V">Voltmeter (V)</option>
           <option value="A">Ammeter (mA)</option>
           <option value="Ohm">Ohmmeter (Ω)</option>

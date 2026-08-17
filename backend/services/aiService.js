@@ -33,14 +33,23 @@ IMPORTANT: Return ONLY the JSON object, no markdown, no code fences, no extra te
 }
 
 function generateMockAIResponse(validationResult, lang) {
-  const { hasLoop, burnoutRisk } = validationResult;
+  const { hasLoop, burnoutRisk, nodes = [] } = validationResult;
+  
+  const hasLed = nodes.some(n => n.type === 'led' || n.data?.componentType === 'led');
+  const hasMotor = nodes.some(n => n.type === 'motor' || n.data?.componentType === 'motor');
+  const hasCapacitor = nodes.some(n => n.type === 'capacitor' || n.data?.componentType === 'capacitor');
+  const hasTransistor = nodes.some(n => n.type === 'transistor' || n.data?.componentType === 'transistor');
+  const hasMultimeter = nodes.some(n => n.type === 'multimeter' || n.data?.componentType === 'multimeter');
+
+  let activeComponent = hasLed ? "LED" : hasMotor ? "motor" : hasCapacitor ? "kapasitor" : hasTransistor ? "transistor" : "komponen";
+  let activeComponentEng = hasLed ? "LED" : hasMotor ? "motor" : hasCapacitor ? "capacitor" : hasTransistor ? "transistor" : "component";
 
   if (lang === "id") {
     if (burnoutRisk) {
       return {
         greeting: "Halo, penjelajah rangkaian yang berani! Sepertinya kamu sedang mencari bahaya!",
-        explanation: "LED kamu terhubung langsung ke baterai — itu seperti minum dari selang pemadam kebakaran! Dalam elektronika, Hukum Ohm (V = I × R) mengatakan bahwa tanpa hambatan, arus akan menjadi terlalu tinggi. LED merah standar hanya bisa menangani sekitar 20mA dengan aman.",
-        hint: "Komponen apa yang bisa kamu letakkan di antara baterai dan LED untuk membatasi aliran arus? Pikirkan tentang V = I × R... apa yang terjadi ketika R sangat kecil (atau nol)?",
+        explanation: `${activeComponent} kamu terhubung langsung ke sumber tegangan tanpa hambatan yang cukup! Dalam elektronika, Hukum Ohm (V = I × R) mengatakan bahwa tanpa hambatan, arus akan menjadi terlalu tinggi dan merusak komponen.`,
+        hint: `Komponen apa yang bisa kamu letakkan di antara baterai dan ${activeComponent} untuk membatasi aliran arus? Pikirkan tentang V = I × R...`,
         suggestion_button_text: "Coba tambahkan resistor!",
       };
     }
@@ -49,14 +58,41 @@ function generateMockAIResponse(validationResult, lang) {
       return {
         greeting: "Selamat datang kembali, ilmuwan rangkaian! 🔬 Kulihat kamu sedang menghubungkan komponen!",
         explanation: "Saat ini rangkaianmu terlihat seperti jalan buntu — elektron ingin bergerak dalam satu putaran penuh dari terminal positif baterai, melewati komponen, dan kembali ke terminal negatif. Tanpa putaran yang tertutup, arus tidak bisa mengalir!",
-        hint: "Bisakah kamu melacak jalur dari satu terminal baterai, melewati SEMUA komponenmu, dan kembali ke terminal lainnya? Jika tidak, di mana celahnya? 🔍",
-        suggestion_button_text: "Periksa kembali kabelmu! 🔗",
+        hint: "Bisakah kamu melacak jalur kabelmu? Apakah ada sakelar (switch) yang sedang terbuka? 🔍",
+        suggestion_button_text: "Periksa sakelar dan kabelmu! 🔗",
+      };
+    }
+    
+    if (hasCapacitor) {
+      return {
+        greeting: "Kerja bagus! 🌟 Kamu sedang melihat fenomena RC (Resistor-Capacitor)!",
+        explanation: "Kapasitor bertindak seperti tangki air. Saat ini, arus sedang mengisi tangki tersebut. Setelah tegangan kapasitor sama dengan sumber, arus akan berhenti mengalir (steady-state).",
+        hint: "Perhatikan bagaimana arus meluruh menjadi 0. Apa yang terjadi jika kamu memperbesar nilai Kapasitor atau Resistor? (Petunjuk: Konstanta Waktu τ = R × C) 🧐",
+        suggestion_button_text: "Eksperimen dengan nilai Kapasitansi! ⚡",
+      };
+    }
+    
+    if (hasTransistor) {
+      return {
+        greeting: "Luar biasa! 🌟 Transistor sedang beraksi sebagai sakelar otomatis!",
+        explanation: "Arus kecil di basis (B) mengendalikan arus yang jauh lebih besar dari kolektor (C) ke emitor (E). Jika arus basis cukup, transistor masuk ke kondisi SATURASI (menyala penuh).",
+        hint: "Coba ubah nilai resistor di jalur basis. Pada nilai hambatan berapa transistor mulai keluar dari saturasi dan meredup? 🧐",
+        suggestion_button_text: "Ubah resistor basis! ⚡",
+      };
+    }
+
+    if (hasMultimeter && activeComponent === "komponen") {
+      return {
+        greeting: "Pilihan alat yang tepat! 📏 Kamu sedang melakukan pengukuran dengan Multimeter!",
+        explanation: "Multimeter adalah 'mata' kita untuk melihat aliran listrik. Voltmeter diletakkan secara paralel untuk mengukur beda potensial (Volt), sedangkan Ammeter diletakkan secara seri untuk menghitung elektron yang lewat (Ampere).",
+        hint: "Bandingkan nilai yang ada di layarmu dengan Hukum Ohm manual (V = I × R). Apakah hasilnya cocok? 🧐",
+        suggestion_button_text: "Uji mode ukur lainnya! ⚡",
       };
     }
 
     return {
-      greeting: "Kerja bagus! 🌟 Kamu berhasil membuat rangkaian menyala dengan sukses!",
-      explanation: "Arus mengalir dengan sempurna membentuk putaran dari baterai, melewati resistor yang mengatur kecepatan aliran, dan masuk ke LED yang mengubah sisa energi menjadi cahaya. Hukum Ohm sedang beraksi secara real-time! Berdasarkan analisis saya, nilai arus ada pada level yang aman.",
+      greeting: "Kerja bagus! 🌟 Kamu berhasil membuat rangkaian beroperasi dengan sukses!",
+      explanation: `Arus mengalir dengan sempurna membentuk putaran dari baterai, melewati resistor yang mengatur kecepatan aliran, dan masuk ke ${activeComponent}. Hukum Ohm sedang beraksi secara real-time!`,
       hint: "Apa yang akan terjadi jika kamu mengubah resistor menjadi yang hambatannya lebih tinggi (seperti 10kΩ)? Menurut Hukum Ohm, jika R naik tapi V tetap sama, apa yang terjadi pada I (Arus)? 🧐",
       suggestion_button_text: "Eksperimen dengan nilai resistor! ⚡",
     };
@@ -66,8 +102,8 @@ function generateMockAIResponse(validationResult, lang) {
   if (burnoutRisk) {
     return {
       greeting: "Hey there, brave circuit explorer! Looks like you're living dangerously!",
-      explanation: "Your LED is connected straight to the battery — that's like drinking from a fire hose! In electronics, Ohm's Law (V = I × R) tells us that without resistance, the current goes way too high. A standard red LED can only handle about 20mA safely.",
-      hint: "What component could you place between the battery and the LED to limit the current flow? Think about V = I × R... what happens when R is very small (or zero)?",
+      explanation: `Your ${activeComponentEng} is connected with too little resistance! Ohm's Law (V = I × R) tells us that without resistance, the current goes way too high and destroys components.`,
+      hint: `What component could you place to limit the current flow to the ${activeComponentEng}? Think about V = I × R...`,
       suggestion_button_text: "Try adding a resistor!",
     };
   }
@@ -75,15 +111,24 @@ function generateMockAIResponse(validationResult, lang) {
   if (!hasLoop) {
     return {
       greeting: "Welcome back, circuit scientist! 🔬 I see you've been wiring things up!",
-      explanation: "Right now your circuit looks like a road with a dead end — electrons want to travel in a complete loop from the battery's positive terminal, through components, and back to the negative terminal. Without a closed loop, no current can flow!",
-      hint: "Can you trace a path from one battery terminal, through ALL your components, and back to the other terminal? If not, where is the gap? 🔍",
-      suggestion_button_text: "Double-check your wiring! 🔗",
+      explanation: "Right now your circuit looks like a road with a dead end. Without a closed loop, no current can flow!",
+      hint: "Can you trace a path? Is there an open switch somewhere? 🔍",
+      suggestion_button_text: "Double-check your switches! 🔗",
+    };
+  }
+
+  if (hasMultimeter && activeComponentEng === "component") {
+    return {
+      greeting: "Great choice of tool! 📏 You're taking measurements with the Multimeter!",
+      explanation: "A multimeter acts as our 'eyes' into the circuit. Voltmeters are placed in parallel to measure potential difference, while Ammeters are placed in series to count passing electrons.",
+      hint: "Compare the reading on your screen with a manual Ohm's Law calculation (V = I × R). Do they match? 🧐",
+      suggestion_button_text: "Test another measurement mode! ⚡",
     };
   }
 
   return {
     greeting: "Great job! 🌟 You've got a successfully powered circuit!",
-    explanation: "Current is flowing beautifully in a loop from the battery, through your resistor which sets the pace, and into your LED which turns the remaining energy into light. That's Ohm's Law in action! Based on my analysis, the current is at a safe level.",
+    explanation: `Current is flowing beautifully in a loop from the battery, through your resistor which sets the pace, and into your ${activeComponentEng}. That's Ohm's Law in action!`,
     hint: "What would happen if you changed your resistor to one with a higher resistance (like 10kΩ)? According to Ohm's Law, if R goes up but V stays the same, what happens to I (Current)? 🧐",
     suggestion_button_text: "Experiment with resistor values! ⚡",
   };

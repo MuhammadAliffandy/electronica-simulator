@@ -31,6 +31,7 @@ import { TransistorNode } from "./components/organisms/Nodes/TransistorNode";
 import { WireJunctionNode } from "./components/organisms/Nodes/WireJunctionNode";
 import { SettingsModal } from "./components/organisms/SettingsModal";
 import { initLocalAI, chatLocalAI } from "./services/localAiService";
+import elvoLogo from "./assets/elvo-logo.jpg";
 
 const nodeTypes = {
   battery: BatteryNode,
@@ -254,8 +255,17 @@ export default function App() {
       const data = await res.json();
       setResponse(data);
 
-      if (data.ai_insights) {
-        const circuitMessage = `${data.ai_insights.explanation}\n\n[HINT]: ${data.ai_insights.hint}`;
+      if (data.ai_insights || data.analysis_log) {
+        let circuitMessage = "";
+        
+        if (data.analysis_log && data.analysis_log.length > 0) {
+          circuitMessage += data.analysis_log.join('\n') + '\n\n';
+        }
+        
+        if (data.ai_insights) {
+          circuitMessage += `${data.ai_insights.explanation}\n\n[HINT]: ${data.ai_insights.hint}`;
+        }
+        
         setMessages(prev => [...prev, { role: 'assistant', isSystem: true, content: circuitMessage }]);
       }
 
@@ -417,7 +427,7 @@ export default function App() {
         <div className="topbar-left">
           <div className="topbar-brand">
             <div className="topbar-logo">
-              <img src="/elvo-logo.jpg" alt="ELVO Logo" />
+              <img src={elvoLogo} alt="ELVO Logo" />
             </div>
             <div className="topbar-title">ELVO Simulate</div>
           </div>

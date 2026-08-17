@@ -6,6 +6,7 @@ function calculateSemiconductors(nodes, edges, adj, batteries, diodes, transisto
   const errorLog = [];
   const errorNodes = {};
   const analysisLog = [];
+  let transCurrent_mA = null;
 
   const battery = batteries[0];
   const voltage = battery ? (battery.data?.voltage || 9) : 0;
@@ -169,11 +170,17 @@ function calculateSemiconductors(nodes, edges, adj, batteries, diodes, transisto
       }
       analysisLog.push(`📌 Status Transistor: ${isSaturated ? '🟢 SATURASI — transistor ON penuh, arus mengalir maksimum' : '🟡 AKTIF (Linear) — transistor menguat, IC = hFE × IB'}`);
 
+      let finalTransistorCurrent = 0;
       if (isSaturated) {
         analysisLog.push(`✅ Transistor dalam kondisi SATURASI. Arus kolektor ≈ ${ICsat_mA.toFixed(2)} mA.`);
+        finalTransistorCurrent = ICsat_mA;
       } else {
         analysisLog.push(`✅ Transistor dalam kondisi AKTIF. Arus kolektor = ${IC_mA.toFixed(2)} mA.`);
+        finalTransistorCurrent = IC_mA;
       }
+      
+      // Allow overriding the main loop current
+      transCurrent_mA = finalTransistorCurrent;
     }
   });
 
@@ -189,7 +196,8 @@ function calculateSemiconductors(nodes, edges, adj, batteries, diodes, transisto
     transBlocked,
     errorLog,
     errorNodes,
-    analysisLog
+    analysisLog,
+    transCurrent_mA
   };
 }
 

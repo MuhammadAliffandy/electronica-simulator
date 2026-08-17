@@ -14,6 +14,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.1",
+    "mathjs": "^15.2.0",
     "openai": "^4.77.0"
   },
   "devDependencies": {
@@ -35,7 +36,7 @@
     "mac": {
       "category": "public.app-category.education",
       "target": "dmg",
-      "icon": "build/icon.png"
+      "icon": "build/icon.icns"
     },
     "win": {
       "target": "nsis",

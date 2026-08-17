@@ -3,6 +3,7 @@ const { calculateTotalResistance } = require('./resistanceCalculator');
 const { calculateSemiconductors } = require('./semiconductorLogic');
 const { calculateMultimeterReadings } = require('./multimeterLogic');
 const { calculateACImpedance } = require('./impedanceCalculator');
+const MNAEngine = require('./mnaSolver');
 
 /**
  * Run deterministic circuit validation and return analysis log + error log.
@@ -57,146 +58,98 @@ function validateCircuit(nodes, edges) {
   // Initialize LED states to off
   leds.forEach(l => { nodes_state[l.id] = { ledState: "off" }; });
 
-  // 1. Calculate universal resistance (used for both loop and multimeter)
-  const { totalHambatanUniversal, resistorDetails, parallelGroupDetails } = calculateTotalResistance(resistors, pots, edges);
+  // 1. Run Modified Nodal Analysis (MNA)
+  const engine = new MNAEngine();
+  engine.buildElectricalNodes(nodes, edges);
+  engine.buildSystem();
+  const mnaResult = engine.solve();
 
-  if (battery) {
-    const voltage = battery.data?.voltage || 9;
-    const isAC = battery.data?.sourceType === "ac";
-
-    if (isAC) {
-      analysisLog.push(`⚠️ Sumber tegangan adalah AC (${voltage}V). Perhitungan menggunakan pendekatan nilai puncak untuk simulasi dasar.`);
+  if (mnaResult.success) {
+    analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    analysisLog.push("📐 ANALISIS MNA (Modified Nodal Analysis)");
+    analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    analysisLog.push(`📌 Sistem berhasil dibangun dengan ${engine.nodeCount} node kelistrikan.`);
+    
+    // Log Node Voltages
+    for (let i = 0; i < engine.nodeCount; i++) {
+      const v = engine.getNodeVoltage(i, mnaResult.x);
+      analysisLog.push(`   - Tegangan Node ${i}${i === engine.refNodeIndex ? " (Referensi/Ground)" : ""}: ${v.toFixed(3)} V`);
     }
 
-    // Capacitor logic
-    capacitors.forEach(c => {
-      if (c.data?.capType === "elco" && voltage > 16) {
-         errorLog.push(`💥 BOOM! Ledakan Tegangan! Kapasitor Elco batas 16V terpapar tegangan ${voltage}V!`);
-         errorNodes[c.id] = "Ledakan Tegangan! Tegangan melebihi batas aman 16V.";
+    // Assign node states based on MNA voltages
+    nodes.forEach(n => {
+      const type = n.type || n.data?.componentType;
+      
+      // Update multimeters
+      if (type === 'multimeter') {
+        const mode = n.data?.mode || "V";
+        const n1 = engine.getElectricalNode(n.id, 'a');
+        const n2 = engine.getElectricalNode(n.id, 'b');
+        
+        if (mode === "V") {
+          const v1 = engine.getNodeVoltage(n1, mnaResult.x);
+          const v2 = engine.getNodeVoltage(n2, mnaResult.x);
+          const v_diff = Math.abs(v1 - v2);
+          nodes_state[n.id] = { reading: v_diff.toFixed(2) };
+          analysisLog.push(`📌 Multimeter (Voltmeter) membaca tegangan: ${v_diff.toFixed(2)} V`);
+        }
       }
     });
 
-    if (hasLoop) {
-      // 2. Semiconductor Logic
-      const semiResult = calculateSemiconductors(
-        nodes, edges, adj, batteries, diodes, transistors, totalHambatanUniversal
-      );
+    // 2. Map MNA Results to Component States
+    const compStates = mnaResult.compStates || {};
+    
+    // Evaluate LEDs
+    leds.forEach((l, i) => {
+      const state = compStates[l.id];
+      const na = engine.getElectricalNode(l.id, 'a');
+      const nk = engine.getElectricalNode(l.id, 'b');
+      const Va = engine.getNodeVoltage(na, mnaResult.x);
+      const Vk = engine.getNodeVoltage(nk, mnaResult.x);
       
-      errorLog = errorLog.concat(semiResult.errorLog);
-      errorNodes = { ...errorNodes, ...semiResult.errorNodes };
-      analysisLog.push(...semiResult.analysisLog);
-
-      if (semiResult.diodeBlocked || semiResult.transBlocked) {
-        hasLoop = false;
+      if (state === 'ON') {
+        analysisLog.push(`📌 LED #${i+1} ON (Tegangan Anoda-Katoda: ${(Va - Vk).toFixed(2)} V)`);
+        nodes_state[l.id] = { ledState: "on" };
+      } else {
+        analysisLog.push(`📌 LED #${i+1} OFF (Tegangan tidak cukup atau reverse biased)`);
+        nodes_state[l.id] = { ledState: "off" };
       }
+    });
 
-      if (hasLoop) {
-        // 3. Step-by-Step Ohm's Law and Summary
-        analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-        analysisLog.push("📐 ANALISIS PERHITUNGAN RANGKAIAN");
-        analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    // Evaluate Transistors
+    transistors.forEach((t, i) => {
+      const state = compStates[t.id] || 'OFF';
+      analysisLog.push(`📌 Transistor #${i+1} State: ${state}`);
+    });
 
-        let step1 = `📌 Diketahui: Sumber tegangan Vs = ${voltage}V${isAC ? " AC" : " DC"}`;
-        if (resistorDetails.length > 0) {
-          step1 += " | " + resistorDetails.map(d => `${d.label} = ${d.value.toFixed(1)}${d.unit}`).join(", ");
-        }
-        analysisLog.push(step1);
+    // Evaluate Capacitors (Steady State)
+    capacitors.forEach((c, i) => {
+      const n1 = engine.getElectricalNode(c.id, 'a');
+      const n2 = engine.getElectricalNode(c.id, 'b');
+      const v = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
+      analysisLog.push(`📌 Kapasitor #${i+1} (DC Steady State): Terisi penuh pada ${v.toFixed(2)} V. Arus = 0 A.`);
+    });
+    
+    // Evaluate Inductors
+    inductors.forEach((ind, i) => {
+      analysisLog.push(`📌 Induktor #${i+1} (DC Steady State): Berlaku sebagai kabel pendek (Short Circuit).`);
+    });
 
-        if (totalHambatanUniversal > 0) {
-          analysisLog.push(`📌 Langkah 1 — Total Hambatan: R_total = ${totalHambatanUniversal.toFixed(1)}Ω`);
-        } else {
-          analysisLog.push(`📌 Langkah 1 — Total Hambatan: R_total = 0Ω (tidak ada resistor!)`);
-        }
-
-        if (semiResult.dropDetails.length > 0) {
-          analysisLog.push(`📌 Langkah 2 — Tegangan Jatuh Semikonduktor: ${semiResult.dropDetails.join(" + ")} → ΣVf = ${semiResult.totalVoltageDrop.toFixed(2)}V`);
-          analysisLog.push(`📌 Langkah 3 — Tegangan Efektif: Veff = Vs - ΣVf = ${voltage}V - ${semiResult.totalVoltageDrop.toFixed(2)}V = ${semiResult.effectiveVoltage.toFixed(2)}V`);
-        } else {
-          analysisLog.push(`📌 Langkah 2 — Tegangan Efektif: Veff = Vs = ${voltage}V`);
-        }
-
-        if (totalHambatanUniversal > 0 || (isAC && hasLoop)) {
-          let currentMa = 0;
-          let currentA = 0;
-          
-          if (isAC) {
-            const freq = battery.data?.frequency || 50;
-            const acResult = calculateACImpedance(nodes, edges, freq, totalHambatanUniversal);
-            
-            if (acResult.hasACComponents) {
-              analysisLog.push(`📌 Langkah Tambahan (AC RLC) — Frekuensi: ${freq} Hz`);
-              if (acResult.Xl > 0) analysisLog.push(`📌 Reaktansi Induktif (XL): ${acResult.Xl.toFixed(2)} Ω`);
-              if (acResult.Xc > 0) analysisLog.push(`📌 Reaktansi Kapasitif (XC): ${acResult.Xc.toFixed(2)} Ω`);
-              analysisLog.push(`📌 Impedansi Total (Z): ${acResult.Z.toFixed(2)} Ω`);
-              analysisLog.push(`📌 Sudut Fasa (θ): ${acResult.phaseAngleDeg.toFixed(2)}°`);
-              
-              currentA = acResult.Z > 0 ? (semiResult.effectiveVoltage / acResult.Z) : 0;
-              currentMa = currentA * 1000;
-              
-              analysisLog.push(`📌 Langkah 4 — Hukum Ohm AC: I = Veff / Z = ${semiResult.effectiveVoltage.toFixed(2)}V / ${acResult.Z.toFixed(2)}Ω = ${currentMa.toFixed(2)} mA`);
-              
-              // VR, VL, VC
-              if (totalHambatanUniversal > 0) analysisLog.push(`📌 Drop Tegangan Resistor (VR): ${(currentA * totalHambatanUniversal).toFixed(2)} V`);
-              if (acResult.Xl > 0) analysisLog.push(`📌 Drop Tegangan Induktor (VL): ${(currentA * acResult.Xl).toFixed(2)} V`);
-              if (acResult.Xc > 0) analysisLog.push(`📌 Drop Tegangan Kapasitor (VC): ${(currentA * acResult.Xc).toFixed(2)} V`);
-              
-            } else {
-              currentMa = (semiResult.effectiveVoltage / totalHambatanUniversal) * 1000;
-              analysisLog.push(`📌 Langkah 4 — Hukum Ohm: I = Veff / R_total = ${semiResult.effectiveVoltage.toFixed(2)}V / ${totalHambatanUniversal.toFixed(1)}Ω = ${currentMa.toFixed(2)} mA`);
-            }
-          } else {
-            currentMa = (semiResult.effectiveVoltage / totalHambatanUniversal) * 1000;
-            analysisLog.push(`📌 Langkah 4 — Hukum Ohm: I = Veff / R_total = ${semiResult.effectiveVoltage.toFixed(2)}V / ${totalHambatanUniversal.toFixed(1)}Ω = ${currentMa.toFixed(2)} mA`);
-          }
-
-          let naratif = `✅ Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${currentMa.toFixed(2)} mA`;
-          analysisLog.push(naratif);
-
-          // Evaluasi LED
-          const ledSpecs = {
-            Red:    { vf: 2.0, ifMax: 20 },
-            Yellow: { vf: 2.1, ifMax: 20 },
-            Green:  { vf: 2.2, ifMax: 25 },
-            Blue:   { vf: 3.2, ifMax: 20 },
-            White:  { vf: 3.2, ifMax: 20 },
-          };
-
-          leds.forEach((l, i) => {
-            const color = l.data?.color || "Red";
-            const spec = ledSpecs[color] || ledSpecs.Red;
-
-            if (currentMa > spec.ifMax) {
-              burnoutRisk = true;
-              errorLog.push(`🔥 PERINGATAN: Arus ${currentMa.toFixed(1)}mA melebihi batas aman LED #${i+1} (${spec.ifMax}mA)! LED Terbakar! 💥`);
-              errorNodes[l.id] = `Arus (${currentMa.toFixed(1)}mA) terlalu besar! Tambahkan/perbesar resistor.`;
-              nodes_state[l.id] = { ledState: "burn" };
-            } else if (currentMa > 0 && semiResult.effectiveVoltage > 0) {
-              nodes_state[l.id] = { ledState: "on", brightness: Math.min(100, (currentMa / spec.ifMax) * 100) };
-            }
-          });
-
-        } else {
-          burnoutRisk = true;
-          errorLog.push("💥 SHORT CIRCUIT! Tidak ada hambatan! Baterai/komponen akan meledak! 🔥");
-          errorNodes[battery.id] = "KORSLETING! Tidak ada hambatan dalam rangkaian tertutup ini.";
-        }
-      }
-    }
+    analysisLog.push("✅ Kesimpulan MNA: Rangkaian berhasil dievaluasi secara matematis dengan iterasi non-linear.");
   } else {
-    errorLog.push("❌ Rangkaian tidak memiliki sumber tegangan (baterai)!");
+    analysisLog.push(`⚠️ MNA Gagal: ${mnaResult.message}`);
+    errorLog.push(`❌ Simulasi gagal: ${mnaResult.message}`);
   }
 
-  // 4. Multimeter logic
-  calculateMultimeterReadings(multimeters, battery, totalHambatanUniversal, hasLoop, burnoutRisk, hasOpenPins, nodes_state, nodes, edges, adj);
-
   return {
-    analysisLog,
     errorLog,
     errorNodes,
+    analysisLog,
     nodes_state,
     hasLoop,
     burnoutRisk,
-    hasOpenPins
+    hasOpenPins,
+    nodes
   };
 }
 
