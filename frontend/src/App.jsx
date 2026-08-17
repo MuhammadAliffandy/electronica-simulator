@@ -382,7 +382,7 @@ export default function App() {
         <div className="topbar-left">
           <div className="topbar-brand">
             <div className="topbar-logo">
-              <img src="/elvo-logo.svg" alt="ELVO Logo" />
+              <img src="/elvo-logo.jpg" alt="ELVO Logo" />
             </div>
             <div className="topbar-title">ELVO Simulate</div>
           </div>
