@@ -40,14 +40,16 @@ function calculateMultimeterReadings(multimeters, battery, totalHambatanUniversa
              reading = i.toFixed(2);
              unit = "mA";
          }
-      } else if (mmMode === "Ω") {
+      } else if (mmMode === "Ohm" || mmMode === "Ω") {
          reading = totalHambatanUniversal.toFixed(1);
+         unit = "Ω";
       }
-    } else if (mmMode === "Ω") {
+    } else if (mmMode === "Ohm" || mmMode === "Ω") {
+      unit = "Ω";
       // Coba lacak hambatan spesifik antar dua probe multimeter
       const conns = adj[mm.id] || [];
-      const redPin = conns.find(c => c.fromPin === 'red' || c.toPin === 'red')?.node;
-      const blackPin = conns.find(c => c.fromPin === 'black' || c.toPin === 'black')?.node;
+      const redPin = conns.find(c => c.fromPin === 'probe-red' || c.toPin === 'probe-red' || c.fromPin === 'red' || c.toPin === 'red')?.node;
+      const blackPin = conns.find(c => c.fromPin === 'probe-black' || c.toPin === 'probe-black' || c.fromPin === 'black' || c.toPin === 'black')?.node;
       
       if (redPin && blackPin) {
         const measuredR = getResistanceBetweenNodes(redPin, blackPin, nodes, adj);
