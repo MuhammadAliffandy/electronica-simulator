@@ -23,7 +23,7 @@ export function BatteryNode({ id, data, selected }) {
             {/* Battery Body */}
             <div style={{ flex: 1, height: '100%', background: 'linear-gradient(to bottom, #1f2937 0%, #4b5563 50%, #1f2937 100%)', borderRadius: '2px', border: '1px solid #111827', display: 'flex', position: 'relative', overflow: 'hidden' }}>
                <div style={{ width: '25%', height: '100%', background: '#3b82f6', borderRight: '1px solid #111827' }}></div> {/* Blue negative side */}
-               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e5e7eb', fontSize: '10px', fontWeight: 'bold', textShadow: '1px 1px 0 #000' }}>ELVO</div>
+               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#e5e7eb', fontSize: '10px', fontWeight: 'bold', textShadow: '1px 1px 0 #000' }}></div>
                <div style={{ width: '25%', height: '100%', background: '#ef4444', borderLeft: '1px solid #111827' }}></div> {/* Red positive side */}
             </div>
             {/* Positive Tip */}

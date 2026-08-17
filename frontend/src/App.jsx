@@ -429,7 +429,7 @@ export default function App() {
             <div className="topbar-logo">
               <img src={elvoLogo} alt="ELVO Logo" />
             </div>
-            <div className="topbar-title">ELVO Simulate</div>
+            <div className="topbar-title">ELVO Simulator</div>
           </div>
           <div className="topbar-menu">
             <div className="dropdown">
@@ -457,31 +457,6 @@ export default function App() {
           </div>
         </div>
         <div className="topbar-right" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {isRunning ? (
-            <button
-              className="canvas-run-btn"
-              onClick={handleStop}
-              style={{ position: 'relative', bottom: 'auto', right: 'auto', background: '#ef4444', borderColor: '#ef4444' }}
-            >
-              ⏹ STOP SIM
-            </button>
-          ) : (
-            <button
-              className="canvas-run-btn"
-              onClick={handleSimulate}
-              style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
-            >
-              ▶ RUN SIM
-            </button>
-          )}
-          <button
-            className="canvas-run-btn"
-            onClick={handleReset}
-            style={{ position: 'relative', bottom: 'auto', right: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.7rem' }}
-            title="Reset ke kondisi awal"
-          >
-            ↺ RESET
-          </button>
           <span
             className="topbar-icon"
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-main)' }}
@@ -534,7 +509,7 @@ export default function App() {
             onNodeDragStop={onNodeDragStop}
             nodeTypes={memoizedNodeTypes}
             connectionMode="loose"
-            defaultEdgeOptions={{ type: 'step' }}
+            defaultEdgeOptions={{ type: 'smoothstep' }}
             fitView
           >
             <Background color="var(--border-color)" gap={16} size={1} />
@@ -554,6 +529,33 @@ export default function App() {
               style={{ backgroundColor: 'var(--bg-base)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}
             />
           </ReactFlow>
+          <div style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '12px', zIndex: 10 }}>
+            {isRunning ? (
+              <button
+                className="canvas-run-btn"
+                onClick={handleStop}
+                style={{ position: 'relative', bottom: 'auto', right: 'auto', background: '#ef4444', borderColor: '#ef4444' }}
+              >
+                ⏹ STOP SIM
+              </button>
+            ) : (
+              <button
+                className="canvas-run-btn"
+                onClick={handleSimulate}
+                style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
+              >
+                ▶ RUN SIM
+              </button>
+            )}
+            <button
+              className="canvas-run-btn"
+              onClick={handleReset}
+              style={{ position: 'relative', bottom: 'auto', right: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.7rem' }}
+              title="Reset ke kondisi awal"
+            >
+              ↺ RESET
+            </button>
+          </div>
         </div>
 
         <div className="resizer" onMouseDown={() => setIsResizingRight(true)} />
