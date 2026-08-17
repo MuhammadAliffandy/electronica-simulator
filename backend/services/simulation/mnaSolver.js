@@ -94,6 +94,22 @@ class MNAEngine {
     
     this.nodeCount = this.electricalNodes.length;
     
+    // Assign nodes for all component pins to avoid dynamic allocation after matrix init
+    this.nodes.forEach(n => {
+      const type = n.type || n.data?.componentType;
+      // Common pins
+      this.getElectricalNode(n.id, 'a');
+      this.getElectricalNode(n.id, 'b');
+      
+      if (type === 'potentiometer') {
+        this.getElectricalNode(n.id, 'w');
+      }
+      if (type === 'transistor') {
+        this.getElectricalNode(n.id, 'c');
+        this.getElectricalNode(n.id, 'e');
+      }
+    });
+
     // Select Reference Node (Ground)
     // Find a battery negative terminal
     let refPin = null;
