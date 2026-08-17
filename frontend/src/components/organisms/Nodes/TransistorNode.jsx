@@ -23,27 +23,19 @@ export function TransistorNode({ id, data, selected }) {
         background:'#1e3a5f', color:'#93c5fd', fontSize:'0.65rem', fontWeight:'bold',
         padding:'1px 4px', borderRadius:'4px', pointerEvents:'none' }}>E</div>
 
-      <div className="transistor-svg" style={{ margin: "4px auto", color: "#ec4899" }}>
-        <svg viewBox="0 0 40 40" width="44" height="44">
-          {/* Circle body */}
-          <circle cx="20" cy="20" r="18" fill="none" stroke="currentColor" strokeWidth="2.5"/>
-          {/* Base line */}
-          <line x1="0" y1="20" x2="12" y2="20" stroke="currentColor" strokeWidth="2.5"/>
-          {/* Base bar */}
-          <line x1="12" y1="10" x2="12" y2="30" stroke="currentColor" strokeWidth="4"/>
-          {/* Collector (up-right) */}
-          <line x1="12" y1="13" x2="26" y2="3" stroke="currentColor" strokeWidth="2.5"/>
-          <line x1="26" y1="3" x2="26" y2="0" stroke="currentColor" strokeWidth="2.5"/>
-          {/* Emitter (down-right) */}
-          <line x1="12" y1="27" x2="26" y2="37" stroke="currentColor" strokeWidth="2.5"/>
-          <line x1="26" y1="37" x2="26" y2="40" stroke="currentColor" strokeWidth="2.5"/>
-          {/* Arrow on emitter (NPN: pointing away, PNP: pointing in) */}
-          {isNPN ? (
-            <polygon points="19,32 25,38 25,31" fill="currentColor"/>
-          ) : (
-            <polygon points="14,23 12,29 18,27" fill="currentColor"/>
-          )}
-        </svg>
+      <div className="transistor-visual" style={{ margin: "10px auto", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        {/* TO-92 Body */}
+        <div style={{ width: '40px', height: '30px', background: 'linear-gradient(to right, #111827 0%, #374151 50%, #111827 100%)', borderTopLeftRadius: '20px', borderTopRightRadius: '20px', border: '1px solid #030712', borderBottom: 'none', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', paddingBottom: '4px' }}>
+           <span style={{ fontSize: '8px', color: '#9ca3af', fontFamily: 'monospace' }}>{isNPN ? 'BC547' : 'BC557'}</span>
+        </div>
+        {/* TO-92 Bottom Ridge */}
+        <div style={{ width: '44px', height: '4px', background: '#1f2937', border: '1px solid #030712', borderRadius: '2px' }}></div>
+        {/* 3 Legs */}
+        <div style={{ display: 'flex', width: '30px', justifyContent: 'space-between', marginTop: '-1px' }}>
+          <div style={{ width: '4px', height: '16px', background: 'linear-gradient(to right, #9ca3af, #f3f4f6, #9ca3af)' }}></div>
+          <div style={{ width: '4px', height: '16px', background: 'linear-gradient(to right, #9ca3af, #f3f4f6, #9ca3af)' }}></div>
+          <div style={{ width: '4px', height: '16px', background: 'linear-gradient(to right, #9ca3af, #f3f4f6, #9ca3af)' }}></div>
+        </div>
       </div>
       <div className="node-label">{data.label}</div>
       <div className="node-value">

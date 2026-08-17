@@ -13,17 +13,28 @@ export function CapacitorNode({ id, data, selected }) {
           <div className="polar-label polar-minus">-</div>
         </>
       )}
-      <div className="capacitor-svg" style={{ margin: "4px auto", color: "#3b82f6" }}>
-        <svg viewBox="0 0 40 24" width="40" height="24">
-          <line x1="0" y1="12" x2="16" y2="12" stroke="currentColor" strokeWidth="2.5"/>
-          <line x1="16" y1="4" x2="16" y2="20" stroke="currentColor" strokeWidth="2.5"/>
-          {isElco ? (
-            <path d="M 24 4 Q 20 12 24 20" fill="none" stroke="currentColor" strokeWidth="2.5"/>
-          ) : (
-            <line x1="24" y1="4" x2="24" y2="20" stroke="currentColor" strokeWidth="2.5"/>
-          )}
-          <line x1="24" y1="12" x2="40" y2="12" stroke="currentColor" strokeWidth="2.5"/>
-        </svg>
+      <div className="capacitor-visual" style={{ margin: "10px auto" }}>
+        {isElco ? (
+          <div style={{ width: '30px', height: '40px', margin: '0 auto', background: 'linear-gradient(to right, #1e3a8a 0%, #3b82f6 50%, #1e3a8a 100%)', borderRadius: '4px', position: 'relative', display: 'flex', border: '1px solid #172554' }}>
+            {/* Gray negative stripe */}
+            <div style={{ width: '8px', height: '100%', background: '#9ca3af', borderRight: '1px solid #6b7280', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-evenly' }}>
+              <div style={{ color: '#1f2937', fontSize: '8px', fontWeight: 'bold' }}>-</div>
+              <div style={{ color: '#1f2937', fontSize: '8px', fontWeight: 'bold' }}>-</div>
+            </div>
+            {/* Top metallic cross */}
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '8px', background: '#d1d5db', borderRadius: '4px 4px 0 0', borderBottom: '1px solid #9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+               <div style={{ width: '80%', height: '1px', background: '#9ca3af', position: 'absolute' }}></div>
+               <div style={{ width: '1px', height: '80%', background: '#9ca3af', position: 'absolute' }}></div>
+            </div>
+            {isExploded && (
+              <div style={{ position: 'absolute', top: '-10px', left: '0', width: '100%', textAlign: 'center', fontSize: '20px' }}>💥</div>
+            )}
+          </div>
+        ) : (
+          <div style={{ width: '24px', height: '24px', margin: '0 auto', background: 'radial-gradient(circle at 30% 30%, #f59e0b 0%, #b45309 80%)', borderRadius: '50%', border: '1px solid #78350f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontSize: '8px', color: '#111827', fontWeight: 'bold', textShadow: '0.5px 0.5px 0px rgba(255,255,255,0.3)' }}>104</span>
+          </div>
+        )}
       </div>
       <div className="node-label">{data.label} {isElco && !isExploded ? "(+/-)" : ""}</div>
       <div className="node-value">

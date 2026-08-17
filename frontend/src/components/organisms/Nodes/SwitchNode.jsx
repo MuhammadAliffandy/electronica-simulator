@@ -11,27 +11,27 @@ export function SwitchNode({ id, data, selected }) {
   };
 
   return (
-    <BaseNode id={id} data={data} selected={selected} className="switch-node">      {/* SPST Switch SVG */}
-      <div className="switch-svg-wrap" title={isOn ? "ON" : "OFF"}>
-        <svg width="72" height="36" viewBox="0 0 72 36">
-          {/* Left wire + terminal dot */}
-          <line x1="0" y1="18" x2="16" y2="18" stroke={isOn ? "#10b981" : "#94a3b8"} strokeWidth="2.5"/>
-          <circle cx="16" cy="18" r="3" fill={isOn ? "#10b981" : "#94a3b8"} />
-          
-          {/* Right wire + terminal dot */}
-          <line x1="56" y1="18" x2="72" y2="18" stroke={isOn ? "#10b981" : "#94a3b8"} strokeWidth="2.5"/>
-          <circle cx="56" cy="18" r="3" fill={isOn ? "#10b981" : "#94a3b8"} />
-          
-          {/* The switch lever */}
-          <line 
-            x1="16" y1="18" 
-            x2="56" y2={isOn ? "18" : "6"} 
-            stroke={isOn ? "#10b981" : "#ef4444"} 
-            strokeWidth="3" 
-            strokeLinecap="round"
-            style={{ transition: 'all 0.2s ease' }}
-          />
-        </svg>
+    <BaseNode id={id} data={data} selected={selected} className="switch-node">      {/* Realistic Slide Switch */}
+      <div className="switch-visual" title={isOn ? "ON" : "OFF"} style={{ margin: "10px auto", cursor: "pointer" }} onClick={toggleSwitch}>
+        {/* Metal casing */}
+        <div style={{ width: '48px', height: '24px', margin: '0 auto', background: 'linear-gradient(to bottom, #d1d5db, #9ca3af)', borderRadius: '4px', border: '1px solid #4b5563', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.8), 0 2px 4px rgba(0,0,0,0.5)' }}>
+          {/* Inner track */}
+          <div style={{ width: '36px', height: '12px', background: '#111827', borderRadius: '2px', position: 'relative', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.8)' }}>
+            {/* The plastic slider */}
+            <div style={{ 
+              width: '16px', height: '14px', background: 'linear-gradient(to bottom, #ef4444, #991b1b)', 
+              borderRadius: '2px', position: 'absolute', top: '-1px', left: isOn ? '20px' : '0px',
+              transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)', border: '1px solid #450a0a',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.3)'
+            }}>
+               {/* Ridges on slider */}
+               <div style={{ width: '2px', height: '8px', background: '#450a0a', margin: '2px auto' }}></div>
+            </div>
+          </div>
+          {/* Screw holes */}
+          <div style={{ position: 'absolute', left: '2px', width: '4px', height: '4px', borderRadius: '50%', background: '#1f2937' }}></div>
+          <div style={{ position: 'absolute', right: '2px', width: '4px', height: '4px', borderRadius: '50%', background: '#1f2937' }}></div>
+        </div>
       </div>
       <div className="node-label">{data.label}</div>
       <div className="node-value" style={{ marginTop: '4px' }}>
