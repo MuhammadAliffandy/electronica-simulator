@@ -71,7 +71,7 @@ export function SettingsModal({
                     </button>
                     {isDownloading && (
                       <div className="progress-container">
-                        <div className="progress-bar" style={{ width: \`\${localAiProgress}%\` }}></div>
+                        <div className="progress-bar" style={{ width: `${localAiProgress}%` }}></div>
                         <div className="progress-text">{localAiProgress.toFixed(1)}%</div>
                       </div>
                     )}
