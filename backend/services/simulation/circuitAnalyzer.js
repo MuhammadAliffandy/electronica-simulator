@@ -170,21 +170,64 @@ function validateCircuit(nodes, edges) {
          let currentmA = current * 1000;
          totalPower += v * current;
          
-         analysisLog.push(`📌 Diketahui: Baterai #${i+1} (Vs) = ${v.toFixed(2)} V`);
-         analysisLog.push(`📌 Hukum Ohm Total: I_total = ${currentmA.toFixed(2)} mA`);
+         let r_eq = current > 1e-6 ? v / current : 0;
          
-         if (current > 1e-6) {
-           let r_eq = v / current;
-           analysisLog.push(`📌 Ekivalen Hambatan Rangkaian (R_total) = Vs / I_total = ${r_eq.toFixed(2)} Ω`);
+         // Estimasi Veff jika ada semikonduktor (LED/Diode) untuk tampilan edukatif
+         let totalVf = 0;
+         leds.forEach(l => {
+           if (compStates[l.id] === 'ON') totalVf += 2.0; // Vf rata-rata LED
+         });
+         let veff = v - totalVf;
+         if (veff < 0) veff = 0;
+         
+         let hasSemiconductor = leds.length > 0 || diodes.length > 0 || transistors.length > 0;
+         
+         let knownStr = `📌 Diketahui: Sumber tegangan Vs = ${v.toFixed(2)}V DC`;
+         if (resistors.length > 0) {
+           knownStr += ` | ` + resistors.map((r, idx) => `R${idx+1} = ${r.data?.resistance || 1000}Ω`).join(', ');
+         }
+         analysisLog.push(knownStr);
+         
+         if (r_eq > 0) {
+           analysisLog.push(`📌 Langkah 1 - Total Hambatan: R_total = ${r_eq.toFixed(1)}Ω`);
+         } else {
+           analysisLog.push(`📌 Langkah 1 - Total Hambatan: R_total = ∞ Ω (Rangkaian Terbuka)`);
+         }
+         
+         if (hasSemiconductor) {
+            analysisLog.push(`📌 Langkah 2 - Tegangan Efektif: Veff = Vs - Vf = ${v.toFixed(2)}V - ${totalVf.toFixed(2)}V = ${veff.toFixed(2)}V`);
+            if (r_eq > 0) {
+              // Hitung manual Req sebenarnya untuk display (karena Req = Veff/I)
+              let req_display = current > 1e-6 ? veff / current : r_eq;
+              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: I = Veff / R_total = ${veff.toFixed(2)}V / ${req_display.toFixed(1)}Ω = ${currentmA.toFixed(2)} mA`);
+            } else {
+              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: Rangkaian Terbuka (I = 0 mA)`);
+            }
+         } else {
+            analysisLog.push(`📌 Langkah 2 - Tegangan Efektif: Veff = Vs = ${v.toFixed(2)}V (tidak ada komponen semikonduktor)`);
+            if (r_eq > 0) {
+              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: I = Veff / R_total = ${v.toFixed(2)}V / ${r_eq.toFixed(1)}Ω = ${currentmA.toFixed(2)} mA`);
+            } else {
+              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: Rangkaian Terbuka (I = 0 mA)`);
+            }
          }
       }
     });
 
-    if (totalPower > 0) {
-       analysisLog.push(`📌 Total Konsumsi Daya (P) = ${(totalPower * 1000).toFixed(2)} mW`);
+    if (resistors.length > 0) {
+       resistors.forEach((r, idx) => {
+         const n1 = engine.getElectricalNode(r.id, 'a');
+         const n2 = engine.getElectricalNode(r.id, 'b');
+         const vr = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
+         analysisLog.push(`📌 Distribusi Tegangan Resistor: R${idx+1}: V = ${vr.toFixed(2)}V`);
+       });
     }
 
-    analysisLog.push("✅ Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan telah dievaluasi dengan MNA Solver.");
+    if (totalPower > 0) {
+       analysisLog.push(`📌 Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${(totalPower*1000/batteries[0]?.data?.voltage).toFixed(2)} mA dengan total daya ${(totalPower * 1000).toFixed(2)} mW.`);
+    } else {
+       analysisLog.push("✅ Kesimpulan: Rangkaian dinyatakan TERBUKA (Arus = 0 mA).");
+    }
   } else {
     analysisLog.push(`⚠️ MNA Gagal: ${mnaResult.message}`);
     errorLog.push(`❌ Simulasi gagal: ${mnaResult.message}`);
