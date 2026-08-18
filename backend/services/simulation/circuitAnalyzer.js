@@ -76,10 +76,6 @@ function validateCircuit(nodes, edges) {
       analysisLog.push(`   - Tegangan Node ${i}${i === engine.refNodeIndex ? " (Referensi/Ground)" : ""}: ${v.toFixed(3)} V`);
     }
 
-    // Assign node states based on MNA voltages
-    nodes.forEach(n => {
-      const type = n.type || n.data?.componentType;
-      
     // Nodes state mapped later
 
     // 2. Map MNA Results to Component States
@@ -224,7 +220,8 @@ function validateCircuit(nodes, edges) {
     }
 
     if (totalPower > 0) {
-       analysisLog.push(`📌 Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${(totalPower*1000/batteries[0]?.data?.voltage).toFixed(2)} mA dengan total daya ${(totalPower * 1000).toFixed(2)} mW.`);
+       let vs = batteries.length > 0 ? (batteries[0].data?.voltage || 9) : 1;
+       analysisLog.push(`📌 Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${(totalPower*1000/vs).toFixed(2)} mA dengan total daya ${(totalPower * 1000).toFixed(2)} mW.`);
     } else {
        analysisLog.push("✅ Kesimpulan: Rangkaian dinyatakan TERBUKA (Arus = 0 mA).");
     }
