@@ -247,6 +247,7 @@ class MNAEngine {
         const V = n.data?.voltage || 9;
         const np = this.getElectricalNode(n.id, 'a'); // +
         const nn = this.getElectricalNode(n.id, 'b'); // -
+        this.compStates[`${n.id}_vIdx`] = vSourceIdx;
         this.stampVoltageSource(np, nn, V, vSourceIdx++);
       }
       

@@ -80,21 +80,7 @@ function validateCircuit(nodes, edges) {
     nodes.forEach(n => {
       const type = n.type || n.data?.componentType;
       
-      // Update multimeters
-      if (type === 'multimeter') {
-        const mode = n.data?.mode || "V";
-        const n1 = engine.getElectricalNode(n.id, 'a');
-        const n2 = engine.getElectricalNode(n.id, 'b');
-        
-        if (mode === "V") {
-          const v1 = engine.getNodeVoltage(n1, mnaResult.x);
-          const v2 = engine.getNodeVoltage(n2, mnaResult.x);
-          const v_diff = Math.abs(v1 - v2);
-          nodes_state[n.id] = { reading: v_diff.toFixed(2) };
-          analysisLog.push(`📌 Multimeter (Voltmeter) membaca tegangan: ${v_diff.toFixed(2)} V`);
-        }
-      }
-    });
+    // Nodes state mapped later
 
     // 2. Map MNA Results to Component States
     const compStates = mnaResult.compStates || {};
@@ -168,7 +154,37 @@ function validateCircuit(nodes, edges) {
       nodes_state[m.id] = { reading: readingStr };
     });
 
-    analysisLog.push("✅ Kesimpulan MNA: Rangkaian berhasil dievaluasi secara matematis dengan iterasi non-linear.");
+    // Educational Summary
+    let totalPower = 0;
+    analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    analysisLog.push("📐 ANALISIS EDUKATIF HUKUM OHM");
+    analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+    
+    batteries.forEach((b, i) => {
+      const v = b.data?.voltage || 9;
+      const vIdx = engine.compStates[`${b.id}_vIdx`];
+      if (vIdx !== undefined) {
+         const mRow = engine.N_vars + vIdx;
+         // Current through voltage source (absolute value for simplicity)
+         let current = Math.abs(mnaResult.x[mRow][0]); 
+         let currentmA = current * 1000;
+         totalPower += v * current;
+         
+         analysisLog.push(`📌 Diketahui: Baterai #${i+1} (Vs) = ${v.toFixed(2)} V`);
+         analysisLog.push(`📌 Hukum Ohm Total: I_total = ${currentmA.toFixed(2)} mA`);
+         
+         if (current > 1e-6) {
+           let r_eq = v / current;
+           analysisLog.push(`📌 Ekivalen Hambatan Rangkaian (R_total) = Vs / I_total = ${r_eq.toFixed(2)} Ω`);
+         }
+      }
+    });
+
+    if (totalPower > 0) {
+       analysisLog.push(`📌 Total Konsumsi Daya (P) = ${(totalPower * 1000).toFixed(2)} mW`);
+    }
+
+    analysisLog.push("✅ Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan telah dievaluasi dengan MNA Solver.");
   } else {
     analysisLog.push(`⚠️ MNA Gagal: ${mnaResult.message}`);
     errorLog.push(`❌ Simulasi gagal: ${mnaResult.message}`);
