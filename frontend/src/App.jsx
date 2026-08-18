@@ -184,6 +184,12 @@ export default function App() {
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
+  useEffect(() => {
+    window.triggerSimulation = () => {
+      if (isRunning) handleSimulate(true);
+    };
+  });
+
   const toggleCategory = (catKey) => {
     setCollapsedCats((prev) => ({ ...prev, [catKey]: !prev[catKey] }));
   };
@@ -239,8 +245,8 @@ export default function App() {
     setEdges((eds) => eds.filter((e) => e.id !== edge.id));
   }, [setEdges, takeSnapshot]);
 
-  const handleSimulate = async () => {
-    setIsLoading(true);
+  const handleSimulate = async (silent = false) => {
+    setIsLoading(!silent);
     setIsRunning(true);
 
     // Animate edges
@@ -255,7 +261,7 @@ export default function App() {
       const data = await res.json();
       setResponse(data);
 
-      if (data.ai_insights || data.analysis_log) {
+      if (!silent && (data.ai_insights || data.analysis_log)) {
         let circuitMessage = "";
         
         if (data.analysis_log && data.analysis_log.length > 0) {

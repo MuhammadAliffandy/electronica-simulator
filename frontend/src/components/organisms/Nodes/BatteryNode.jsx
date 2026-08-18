@@ -44,7 +44,10 @@ export function BatteryNode({ id, data, selected }) {
         <input 
           type="number" 
           value={data.voltage !== undefined ? data.voltage : 0} 
-          onChange={(e) => updateNodeData(id, { voltage: e.target.value === '' ? '' : Number(e.target.value) })}
+          onChange={(e) => {
+            updateNodeData(id, { voltage: e.target.value === '' ? '' : Number(e.target.value) });
+            if (window.triggerSimulation) window.triggerSimulation();
+          }}
           className="node-input nodrag"
         />
         V
@@ -54,7 +57,10 @@ export function BatteryNode({ id, data, selected }) {
           <input 
             type="number" 
             value={data.frequency !== undefined ? data.frequency : 50} 
-            onChange={(e) => updateNodeData(id, { frequency: e.target.value === '' ? '' : Number(e.target.value) })}
+            onChange={(e) => {
+              updateNodeData(id, { frequency: e.target.value === '' ? '' : Number(e.target.value) });
+              if (window.triggerSimulation) window.triggerSimulation();
+            }}
             className="node-input nodrag"
           />
           Hz

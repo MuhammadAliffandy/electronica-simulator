@@ -279,6 +279,7 @@ class MNAEngine {
         if (mode === "V") {
           this.stampResistor(n1, n2, 1e9); // 1 GigaOhm
         } else if (mode === "A") {
+          this.compStates[`${n.id}_vIdx`] = vSourceIdx;
           this.stampVoltageSource(n1, n2, 0, vSourceIdx++);
         } else if (mode === "Ohm") {
           this.stampCurrentSource(n1, n2, 1e-3);

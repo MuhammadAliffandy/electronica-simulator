@@ -135,6 +135,39 @@ function validateCircuit(nodes, edges) {
       analysisLog.push(`📌 Induktor #${i+1} (DC Steady State): Berlaku sebagai kabel pendek (Short Circuit).`);
     });
 
+    // Evaluate Multimeters
+    multimeters.forEach((m, i) => {
+      const mode = m.data?.mode || "V";
+      const n1 = engine.getElectricalNode(m.id, 'a');
+      const n2 = engine.getElectricalNode(m.id, 'b');
+      let readingStr = "0.00";
+      
+      if (mode === "V") {
+        const v = engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x);
+        readingStr = v.toFixed(2);
+        analysisLog.push(`📌 Multimeter #${i+1} (Voltmeter): Mengukur ${readingStr} V.`);
+      } else if (mode === "Ohm") {
+        const v = engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x);
+        let R = Math.abs(v * 1000); // 1mA test current
+        if (R > 1e6) {
+          readingStr = "Open";
+        } else {
+          readingStr = R.toFixed(0);
+        }
+        analysisLog.push(`📌 Multimeter #${i+1} (Ohmmeter): Mengukur hambatan ${readingStr} Ω.`);
+      } else if (mode === "A") {
+        const vIdx = engine.compStates[`${m.id}_vIdx`];
+        if (vIdx !== undefined) {
+           const mRow = engine.N_vars + vIdx;
+           const current = mnaResult.x[mRow][0]; // in Amperes
+           readingStr = (current * 1000).toFixed(2); // mA
+           analysisLog.push(`📌 Multimeter #${i+1} (Ammeter): Mengukur arus ${readingStr} mA.`);
+        }
+      }
+      
+      nodes_state[m.id] = { reading: readingStr };
+    });
+
     analysisLog.push("✅ Kesimpulan MNA: Rangkaian berhasil dievaluasi secara matematis dengan iterasi non-linear.");
   } else {
     analysisLog.push(`⚠️ MNA Gagal: ${mnaResult.message}`);
