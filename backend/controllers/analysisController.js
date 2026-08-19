@@ -35,21 +35,20 @@ exports.evaluateCircuit = async (req, res) => {
     // Step 2: AI Tutor analysis (OpenAI → Ollama → Mock)
     const { source, insights } = await getAIInsights(validationResult, lang);
 
-    console.log(`🤖 AI response source: ${source}`);
+    console.log(` AI response source: ${source}`);
 
     // Step 3: Build response matching the required schema
     const response = {
       api_status: "ACTIVE",
       analysis_log: [
         ...validationResult.analysisLog,
-        source !== 'mock' ? `🤖 Tutor AI: ${source.toUpperCase()}` : null,
       ].filter(Boolean),
       ai_insights: {
         greeting: insights.greeting || "Halo, pelajar rangkaian!",
         explanation: insights.explanation || "Mari analisis rangkaianmu...",
         hint: insights.hint || "Coba sambungkan semua komponen dalam satu loop!",
         suggestion_button_text:
-          insights.suggestion_button_text || "Butuh bantuan? 🤔",
+          insights.suggestion_button_text || "Butuh bantuan?",
       },
       error_log: validationResult.errorLog,
       error_nodes: validationResult.errorNodes,
@@ -58,7 +57,7 @@ exports.evaluateCircuit = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error("❌ Server error:", error);
+    console.error(" Server error:", error);
     res.status(500).json({
       api_status: "ERROR",
       analysis_log: [],

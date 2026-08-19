@@ -15,7 +15,7 @@ function validateCircuit(nodes, edges) {
   const nodes_state = {}; // Map of nodeId -> specific state object
 
   // Basic checks
-  analysisLog.push(`📊 Received ${nodes.length} component(s) and ${edges.length} wire(s).`);
+  analysisLog.push(` Received ${nodes.length} component(s) and ${edges.length} wire(s).`);
 
   const adj = buildAdjacencyList(nodes, edges);
 
@@ -31,17 +31,17 @@ function validateCircuit(nodes, edges) {
   const multimeters = nodes.filter((n) => n.data?.componentType === "multimeter" || n.type === "multimeter");
 
   if (nodes.length < 2) {
-    errorLog.push("❌ Sebuah rangkaian membutuhkan setidaknya 2 komponen.");
+    errorLog.push(" Sebuah rangkaian membutuhkan setidaknya 2 komponen.");
   }
   if (edges.length === 0) {
-    errorLog.push("❌ Tidak ada kabel yang terdeteksi. Hubungkan komponenmu!");
+    errorLog.push(" Tidak ada kabel yang terdeteksi. Hubungkan komponenmu!");
   }
 
   const hasOpenPins = checkConnectivity(nodes, adj, errorNodes);
   if (hasOpenPins) {
-    errorLog.push("⚠️ Rangkaian terbuka terdeteksi! Periksa kembali kabelmu.");
+    errorLog.push("️ Rangkaian terbuka terdeteksi! Periksa kembali kabelmu.");
   } else {
-    analysisLog.push("✅ Semua komponen memiliki setidaknya 2 koneksi.");
+    analysisLog.push(" Semua komponen memiliki setidaknya 2 koneksi.");
   }
 
   // Check switch state
@@ -66,9 +66,9 @@ function validateCircuit(nodes, edges) {
 
   if (mnaResult.success) {
     analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    analysisLog.push("📐 ANALISIS MNA (Modified Nodal Analysis)");
+    analysisLog.push(" ANALISIS MNA (Modified Nodal Analysis)");
     analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    analysisLog.push(`📌 Sistem berhasil dibangun dengan ${engine.nodeCount} node kelistrikan.`);
+    analysisLog.push(` Sistem berhasil dibangun dengan ${engine.nodeCount} node kelistrikan.`);
     
     // Log Node Voltages
     for (let i = 0; i < engine.nodeCount; i++) {
@@ -90,10 +90,10 @@ function validateCircuit(nodes, edges) {
       const Vk = engine.getNodeVoltage(nk, mnaResult.x);
       
       if (state === 'ON') {
-        analysisLog.push(`📌 LED #${i+1} ON (Tegangan Anoda-Katoda: ${(Va - Vk).toFixed(2)} V)`);
+        analysisLog.push(` LED #${i+1} ON (Tegangan Anoda-Katoda: ${(Va - Vk).toFixed(2)} V)`);
         nodes_state[l.id] = { ledState: "on" };
       } else {
-        analysisLog.push(`📌 LED #${i+1} OFF (Tegangan tidak cukup atau reverse biased)`);
+        analysisLog.push(` LED #${i+1} OFF (Tegangan tidak cukup atau reverse biased)`);
         nodes_state[l.id] = { ledState: "off" };
       }
     });
@@ -101,7 +101,7 @@ function validateCircuit(nodes, edges) {
     // Evaluate Transistors
     transistors.forEach((t, i) => {
       const state = compStates[t.id] || 'OFF';
-      analysisLog.push(`📌 Transistor #${i+1} State: ${state}`);
+      analysisLog.push(` Transistor #${i+1} State: ${state}`);
     });
 
     // Evaluate Capacitors (Steady State)
@@ -109,12 +109,12 @@ function validateCircuit(nodes, edges) {
       const n1 = engine.getElectricalNode(c.id, 'a');
       const n2 = engine.getElectricalNode(c.id, 'b');
       const v = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
-      analysisLog.push(`📌 Kapasitor #${i+1} (DC Steady State): Terisi penuh pada ${v.toFixed(2)} V. Arus = 0 A.`);
+      analysisLog.push(` Kapasitor #${i+1} (DC Steady State): Terisi penuh pada ${v.toFixed(2)} V. Arus = 0 A.`);
     });
     
     // Evaluate Inductors
     inductors.forEach((ind, i) => {
-      analysisLog.push(`📌 Induktor #${i+1} (DC Steady State): Berlaku sebagai kabel pendek (Short Circuit).`);
+      analysisLog.push(` Induktor #${i+1} (DC Steady State): Berlaku sebagai kabel pendek (Short Circuit).`);
     });
 
     // Evaluate Multimeters
@@ -127,7 +127,7 @@ function validateCircuit(nodes, edges) {
       if (mode === "V") {
         const v = engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x);
         readingStr = v.toFixed(2);
-        analysisLog.push(`📌 Multimeter #${i+1} (Voltmeter): Mengukur ${readingStr} V.`);
+        analysisLog.push(` Multimeter #${i+1} (Voltmeter): Mengukur ${readingStr} V.`);
       } else if (mode === "Ohm") {
         const v = engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x);
         let R = Math.abs(v * 1000); // 1mA test current
@@ -136,14 +136,14 @@ function validateCircuit(nodes, edges) {
         } else {
           readingStr = R.toFixed(0);
         }
-        analysisLog.push(`📌 Multimeter #${i+1} (Ohmmeter): Mengukur hambatan ${readingStr} Ω.`);
+        analysisLog.push(` Multimeter #${i+1} (Ohmmeter): Mengukur hambatan ${readingStr} Ω.`);
       } else if (mode === "A") {
         const vIdx = engine.compStates[`${m.id}_vIdx`];
         if (vIdx !== undefined) {
            const mRow = engine.N_vars + vIdx;
            const current = mnaResult.x[mRow][0]; // in Amperes
            readingStr = (current * 1000).toFixed(2); // mA
-           analysisLog.push(`📌 Multimeter #${i+1} (Ammeter): Mengukur arus ${readingStr} mA.`);
+           analysisLog.push(` Multimeter #${i+1} (Ammeter): Mengukur arus ${readingStr} mA.`);
         }
       }
       
@@ -153,7 +153,7 @@ function validateCircuit(nodes, edges) {
     // Educational Summary
     let totalPower = 0;
     analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    analysisLog.push("📐 ANALISIS EDUKATIF HUKUM OHM");
+    analysisLog.push(" ANALISIS EDUKATIF HUKUM OHM");
     analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     
     batteries.forEach((b, i) => {
@@ -178,33 +178,33 @@ function validateCircuit(nodes, edges) {
          
          let hasSemiconductor = leds.length > 0 || diodes.length > 0 || transistors.length > 0;
          
-         let knownStr = `📌 Diketahui: Sumber tegangan Vs = ${v.toFixed(2)}V DC`;
+         let knownStr = ` Diketahui: Sumber tegangan Vs = ${v.toFixed(2)}V DC`;
          if (resistors.length > 0) {
            knownStr += ` | ` + resistors.map((r, idx) => `R${idx+1} = ${r.data?.resistance || 1000}Ω`).join(', ');
          }
          analysisLog.push(knownStr);
          
          if (r_eq > 0) {
-           analysisLog.push(`📌 Langkah 1 - Total Hambatan: R_total = ${r_eq.toFixed(1)}Ω`);
+           analysisLog.push(` Langkah 1 - Total Hambatan: R_total = ${r_eq.toFixed(1)}Ω`);
          } else {
-           analysisLog.push(`📌 Langkah 1 - Total Hambatan: R_total = ∞ Ω (Rangkaian Terbuka)`);
+           analysisLog.push(` Langkah 1 - Total Hambatan: R_total = ∞ Ω (Rangkaian Terbuka)`);
          }
          
          if (hasSemiconductor) {
-            analysisLog.push(`📌 Langkah 2 - Tegangan Efektif: Veff = Vs - Vf = ${v.toFixed(2)}V - ${totalVf.toFixed(2)}V = ${veff.toFixed(2)}V`);
+            analysisLog.push(` Langkah 2 - Tegangan Efektif: Veff = Vs - Vf = ${v.toFixed(2)}V - ${totalVf.toFixed(2)}V = ${veff.toFixed(2)}V`);
             if (r_eq > 0) {
               // Hitung manual Req sebenarnya untuk display (karena Req = Veff/I)
               let req_display = current > 1e-6 ? veff / current : r_eq;
-              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: I = Veff / R_total = ${veff.toFixed(2)}V / ${req_display.toFixed(1)}Ω = ${currentmA.toFixed(2)} mA`);
+              analysisLog.push(` Langkah 3 - Hukum Ohm: I = Veff / R_total = ${veff.toFixed(2)}V / ${req_display.toFixed(1)}Ω = ${currentmA.toFixed(2)} mA`);
             } else {
-              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: Rangkaian Terbuka (I = 0 mA)`);
+              analysisLog.push(` Langkah 3 - Hukum Ohm: Rangkaian Terbuka (I = 0 mA)`);
             }
          } else {
-            analysisLog.push(`📌 Langkah 2 - Tegangan Efektif: Veff = Vs = ${v.toFixed(2)}V (tidak ada komponen semikonduktor)`);
+            analysisLog.push(` Langkah 2 - Tegangan Efektif: Veff = Vs = ${v.toFixed(2)}V (tidak ada komponen semikonduktor)`);
             if (r_eq > 0) {
-              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: I = Veff / R_total = ${v.toFixed(2)}V / ${r_eq.toFixed(1)}Ω = ${currentmA.toFixed(2)} mA`);
+              analysisLog.push(` Langkah 3 - Hukum Ohm: I = Veff / R_total = ${v.toFixed(2)}V / ${r_eq.toFixed(1)}Ω = ${currentmA.toFixed(2)} mA`);
             } else {
-              analysisLog.push(`📌 Langkah 3 - Hukum Ohm: Rangkaian Terbuka (I = 0 mA)`);
+              analysisLog.push(` Langkah 3 - Hukum Ohm: Rangkaian Terbuka (I = 0 mA)`);
             }
          }
       }
@@ -215,19 +215,19 @@ function validateCircuit(nodes, edges) {
          const n1 = engine.getElectricalNode(r.id, 'a');
          const n2 = engine.getElectricalNode(r.id, 'b');
          const vr = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
-         analysisLog.push(`📌 Distribusi Tegangan Resistor: R${idx+1}: V = ${vr.toFixed(2)}V`);
+         analysisLog.push(` Distribusi Tegangan Resistor: R${idx+1}: V = ${vr.toFixed(2)}V`);
        });
     }
 
     if (totalPower > 0) {
        let vs = batteries.length > 0 ? (batteries[0].data?.voltage || 9) : 1;
-       analysisLog.push(`📌 Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${(totalPower*1000/vs).toFixed(2)} mA dengan total daya ${(totalPower * 1000).toFixed(2)} mW.`);
+       analysisLog.push(` Kesimpulan: Rangkaian dinyatakan TERHUBUNG dan arus mengalir sebesar ${(totalPower*1000/vs).toFixed(2)} mA dengan total daya ${(totalPower * 1000).toFixed(2)} mW.`);
     } else {
-       analysisLog.push("✅ Kesimpulan: Rangkaian dinyatakan TERBUKA (Arus = 0 mA).");
+       analysisLog.push(" Kesimpulan: Rangkaian dinyatakan TERBUKA (Arus = 0 mA).");
     }
   } else {
-    analysisLog.push(`⚠️ MNA Gagal: ${mnaResult.message}`);
-    errorLog.push(`❌ Simulasi gagal: ${mnaResult.message}`);
+    analysisLog.push(`️ MNA Gagal: ${mnaResult.message}`);
+    errorLog.push(` Simulasi gagal: ${mnaResult.message}`);
   }
 
   return {

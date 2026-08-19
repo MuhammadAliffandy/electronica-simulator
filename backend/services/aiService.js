@@ -43,96 +43,102 @@ function generateMockAIResponse(validationResult, lang) {
   const hasTransistor = nodes.some(n => n.type === 'transistor' || n.data?.componentType === 'transistor');
   const hasMultimeter = nodes.some(n => n.type === 'multimeter' || n.data?.componentType === 'multimeter');
 
+  const battery = nodes.find(n => n.type === 'battery' || n.data?.componentType === 'battery');
+  const resistor = nodes.find(n => n.type === 'resistor' || n.data?.componentType === 'resistor');
+  const vs = battery?.data?.voltage || 0;
+  const r = resistor?.data?.resistance || 0;
+  const i_mA = r > 0 ? ((vs / r) * 1000).toFixed(2) : 0;
+
   let activeComponent = hasLed ? "LED" : hasMotor ? "motor" : hasCapacitor ? "kapasitor" : hasTransistor ? "transistor" : "komponen";
   let activeComponentEng = hasLed ? "LED" : hasMotor ? "motor" : hasCapacitor ? "capacitor" : hasTransistor ? "transistor" : "component";
 
   if (lang === "id") {
     if (burnoutRisk) {
       return {
-        greeting: "Halo, penjelajah rangkaian yang berani! Sepertinya kamu sedang mencari bahaya!",
-        explanation: `${activeComponent} kamu terhubung langsung ke sumber tegangan tanpa hambatan yang cukup! Dalam elektronika, Hukum Ohm (V = I × R) mengatakan bahwa tanpa hambatan, arus akan menjadi terlalu tinggi dan merusak komponen.`,
-        hint: `Komponen apa yang bisa kamu letakkan di antara baterai dan ${activeComponent} untuk membatasi aliran arus? Pikirkan tentang V = I × R...`,
+        greeting: "Halo, penjelajah rangkaian! Sepertinya kamu sedang mencari bahaya.",
+        explanation: `${activeComponent} kamu terhubung langsung ke sumber tegangan ${vs}V tanpa hambatan yang cukup! Dalam elektronika, Hukum Ohm (V = I x R) mengatakan bahwa tanpa hambatan, arus akan menjadi terlalu tinggi dan merusak komponen.`,
+        hint: `Komponen apa yang bisa kamu letakkan di antara baterai dan ${activeComponent} untuk membatasi aliran arus? Pikirkan tentang V = I x R...`,
         suggestion_button_text: "Coba tambahkan resistor!",
       };
     }
 
     if (!hasLoop) {
       return {
-        greeting: "Selamat datang kembali, ilmuwan rangkaian! 🔬 Kulihat kamu sedang menghubungkan komponen!",
+        greeting: "Selamat datang kembali, ilmuwan rangkaian! Kulihat kamu sedang menghubungkan komponen.",
         explanation: "Saat ini rangkaianmu terlihat seperti jalan buntu — elektron ingin bergerak dalam satu putaran penuh dari terminal positif baterai, melewati komponen, dan kembali ke terminal negatif. Tanpa putaran yang tertutup, arus tidak bisa mengalir!",
-        hint: "Bisakah kamu melacak jalur kabelmu? Apakah ada sakelar (switch) yang sedang terbuka? 🔍",
-        suggestion_button_text: "Periksa sakelar dan kabelmu! 🔗",
+        hint: "Bisakah kamu melacak jalur kabelmu? Apakah ada sakelar (switch) yang sedang terbuka?",
+        suggestion_button_text: "Periksa sakelar dan kabelmu!",
       };
     }
     
     if (hasCapacitor) {
       return {
-        greeting: "Kerja bagus! 🌟 Kamu sedang melihat fenomena RC (Resistor-Capacitor)!",
-        explanation: "Kapasitor bertindak seperti tangki air. Saat ini, arus sedang mengisi tangki tersebut. Setelah tegangan kapasitor sama dengan sumber, arus akan berhenti mengalir (steady-state).",
-        hint: "Perhatikan bagaimana arus meluruh menjadi 0. Apa yang terjadi jika kamu memperbesar nilai Kapasitor atau Resistor? (Petunjuk: Konstanta Waktu τ = R × C) 🧐",
-        suggestion_button_text: "Eksperimen dengan nilai Kapasitansi! ⚡",
+        greeting: "Kerja bagus! Kamu sedang melihat fenomena RC (Resistor-Capacitor)!",
+        explanation: `Kapasitor bertindak seperti tangki air. Saat ini tegangan dari baterai ${vs}V sedang mengisi tangki tersebut melalui resistor ${r} Ohm. Setelah tegangan kapasitor sama dengan sumber, arus akan berhenti mengalir (steady-state).`,
+        hint: "Perhatikan bagaimana arus meluruh menjadi 0. Apa yang terjadi jika kamu memperbesar nilai Kapasitor atau Resistor? (Petunjuk: Konstanta Waktu τ = R x C)",
+        suggestion_button_text: "Eksperimen dengan nilai Kapasitansi!",
       };
     }
     
     if (hasTransistor) {
       return {
-        greeting: "Luar biasa! 🌟 Transistor sedang beraksi sebagai sakelar otomatis!",
-        explanation: "Arus kecil di basis (B) mengendalikan arus yang jauh lebih besar dari kolektor (C) ke emitor (E). Jika arus basis cukup, transistor masuk ke kondisi SATURASI (menyala penuh).",
-        hint: "Coba ubah nilai resistor di jalur basis. Pada nilai hambatan berapa transistor mulai keluar dari saturasi dan meredup? 🧐",
-        suggestion_button_text: "Ubah resistor basis! ⚡",
+        greeting: "Luar biasa! Transistor sedang beraksi sebagai sakelar otomatis!",
+        explanation: "Arus kecil di basis mengendalikan arus yang jauh lebih besar dari kolektor ke emitor. Jika arus basis cukup, transistor masuk ke kondisi SATURASI (menyala penuh).",
+        hint: "Coba ubah nilai resistor di jalur basis. Pada nilai hambatan berapa transistor mulai keluar dari saturasi dan meredup?",
+        suggestion_button_text: "Ubah resistor basis!",
       };
     }
 
     if (hasMultimeter && activeComponent === "komponen") {
       return {
-        greeting: "Pilihan alat yang tepat! 📏 Kamu sedang melakukan pengukuran dengan Multimeter!",
-        explanation: "Multimeter adalah 'mata' kita untuk melihat aliran listrik. Voltmeter diletakkan secara paralel untuk mengukur beda potensial (Volt), sedangkan Ammeter diletakkan secara seri untuk menghitung elektron yang lewat (Ampere).",
-        hint: "Bandingkan nilai yang ada di layarmu dengan Hukum Ohm manual (V = I × R). Apakah hasilnya cocok? 🧐",
-        suggestion_button_text: "Uji mode ukur lainnya! ⚡",
+        greeting: "Pilihan alat yang tepat! Kamu sedang melakukan pengukuran dengan Multimeter.",
+        explanation: `Multimeter adalah 'mata' kita untuk melihat aliran listrik. Dengan sumber tegangan ${vs}V dan hambatan ${r} Ohm, seharusnya arus yang mengalir adalah ${i_mA} mA.`,
+        hint: "Bandingkan nilai yang ada di layarmu dengan Hukum Ohm manual (I = V / R). Apakah hasilnya cocok?",
+        suggestion_button_text: "Uji mode ukur lainnya!",
       };
     }
 
     return {
-      greeting: "Kerja bagus! 🌟 Kamu berhasil membuat rangkaian beroperasi dengan sukses!",
-      explanation: `Arus mengalir dengan sempurna membentuk putaran dari baterai, melewati resistor yang mengatur kecepatan aliran, dan masuk ke ${activeComponent}. Hukum Ohm sedang beraksi secara real-time!`,
-      hint: "Apa yang akan terjadi jika kamu mengubah resistor menjadi yang hambatannya lebih tinggi (seperti 10kΩ)? Menurut Hukum Ohm, jika R naik tapi V tetap sama, apa yang terjadi pada I (Arus)? 🧐",
-      suggestion_button_text: "Eksperimen dengan nilai resistor! ⚡",
+      greeting: "Kerja bagus! Kamu berhasil membuat rangkaian beroperasi dengan sukses.",
+      explanation: `Arus mengalir dengan sempurna membentuk putaran dari baterai ${vs}V, melewati resistor ${r} Ohm yang membatasi arus menjadi sekitar ${i_mA} mA, dan masuk ke ${activeComponent}. Hukum Ohm sedang beraksi secara real-time!`,
+      hint: `Apa yang akan terjadi jika kamu mengubah resistor menjadi yang hambatannya dua kali lipat? Menurut Hukum Ohm (I = V / R), jika hambatan naik tapi tegangan tetap ${vs}V, apa yang terjadi pada arus?`,
+      suggestion_button_text: "Eksperimen dengan nilai resistor!",
     };
   }
 
   // English fallback
   if (burnoutRisk) {
     return {
-      greeting: "Hey there, brave circuit explorer! Looks like you're living dangerously!",
-      explanation: `Your ${activeComponentEng} is connected with too little resistance! Ohm's Law (V = I × R) tells us that without resistance, the current goes way too high and destroys components.`,
-      hint: `What component could you place to limit the current flow to the ${activeComponentEng}? Think about V = I × R...`,
+      greeting: "Hey there, brave circuit explorer! Looks like you're living dangerously.",
+      explanation: `Your ${activeComponentEng} is connected with too little resistance to the ${vs}V source! Ohm's Law (V = I x R) tells us that without resistance, the current goes way too high and destroys components.`,
+      hint: `What component could you place to limit the current flow to the ${activeComponentEng}? Think about V = I x R...`,
       suggestion_button_text: "Try adding a resistor!",
     };
   }
 
   if (!hasLoop) {
     return {
-      greeting: "Welcome back, circuit scientist! 🔬 I see you've been wiring things up!",
+      greeting: "Welcome back, circuit scientist! I see you've been wiring things up.",
       explanation: "Right now your circuit looks like a road with a dead end. Without a closed loop, no current can flow!",
-      hint: "Can you trace a path? Is there an open switch somewhere? 🔍",
-      suggestion_button_text: "Double-check your switches! 🔗",
+      hint: "Can you trace a path? Is there an open switch somewhere?",
+      suggestion_button_text: "Double-check your switches!",
     };
   }
 
   if (hasMultimeter && activeComponentEng === "component") {
     return {
-      greeting: "Great choice of tool! 📏 You're taking measurements with the Multimeter!",
-      explanation: "A multimeter acts as our 'eyes' into the circuit. Voltmeters are placed in parallel to measure potential difference, while Ammeters are placed in series to count passing electrons.",
-      hint: "Compare the reading on your screen with a manual Ohm's Law calculation (V = I × R). Do they match? 🧐",
-      suggestion_button_text: "Test another measurement mode! ⚡",
+      greeting: "Great choice of tool! You're taking measurements with the Multimeter.",
+      explanation: `A multimeter acts as our 'eyes' into the circuit. With a ${vs}V source and ${r} Ohm resistance, the theoretical current is ${i_mA} mA.`,
+      hint: "Compare the reading on your screen with a manual Ohm's Law calculation (V = I x R). Do they match?",
+      suggestion_button_text: "Test another measurement mode!",
     };
   }
 
   return {
-    greeting: "Great job! 🌟 You've got a successfully powered circuit!",
-    explanation: `Current is flowing beautifully in a loop from the battery, through your resistor which sets the pace, and into your ${activeComponentEng}. That's Ohm's Law in action!`,
-    hint: "What would happen if you changed your resistor to one with a higher resistance (like 10kΩ)? According to Ohm's Law, if R goes up but V stays the same, what happens to I (Current)? 🧐",
-    suggestion_button_text: "Experiment with resistor values! ⚡",
+    greeting: "Great job! You've got a successfully powered circuit.",
+    explanation: `Current is flowing beautifully in a loop from the ${vs}V battery, through your ${r} Ohm resistor which limits the current to ${i_mA} mA, and into your ${activeComponentEng}. That's Ohm's Law in action!`,
+    hint: `What would happen if you changed your resistor to one with a higher resistance? According to Ohm's Law (I = V / R), if R goes up but V stays ${vs}V, what happens to current?`,
+    suggestion_button_text: "Experiment with resistor values!",
   };
 }
 
@@ -293,9 +299,9 @@ PERSONA RULES:
   } catch (error) {
     console.warn("Chat generation failed:", error.message);
     if (lang === "id") {
-      return "Maaf, mesin AI-ku sedang beristirahat. Pastikan Ollama berjalan di komputermu!";
+      return "Maaf, mesin AI-ku sedang beristirahat. Pastikan koneksi atau AI Engine sudah aktif ya!";
     }
-    return "Sorry, my AI engine is resting. Make sure Ollama is running!";
+    return "Sorry, my AI engine is resting. Make sure the AI Engine is active!";
   }
 }
 

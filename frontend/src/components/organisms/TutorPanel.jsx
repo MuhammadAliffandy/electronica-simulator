@@ -41,7 +41,9 @@ export function TutorPanel({ messages, isChatLoading, onSendMessage, chatInput, 
                   </svg>
                   SIMULATION RESULT
                 </strong><br/>
-                {msg.content}
+                <div style={{ whiteSpace: 'pre-wrap', marginTop: '8px' }}>
+                  {msg.content}
+                </div>
               </div>
             ) : (
               <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>

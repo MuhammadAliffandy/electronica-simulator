@@ -198,6 +198,11 @@ export default function App() {
     (params) => {
       takeSnapshot();
       setEdges((eds) => addEdge({ ...params, animated: isRunning, style: { stroke: 'var(--accent-cyan)', strokeWidth: 2 } }, eds));
+      if (isRunning) {
+        setTimeout(() => {
+          if (window.triggerSimulation) window.triggerSimulation();
+        }, 50);
+      }
     },
     [setEdges, isRunning, takeSnapshot]
   );
@@ -243,9 +248,15 @@ export default function App() {
   const onEdgeDoubleClick = useCallback((event, edge) => {
     takeSnapshot();
     setEdges((eds) => eds.filter((e) => e.id !== edge.id));
-  }, [setEdges, takeSnapshot]);
+    if (isRunning) {
+      setTimeout(() => {
+        if (window.triggerSimulation) window.triggerSimulation();
+      }, 50);
+    }
+  }, [setEdges, isRunning, takeSnapshot]);
 
-  const handleSimulate = async (silent = false) => {
+  const handleSimulate = async (silentParam = false) => {
+    const silent = typeof silentParam === 'boolean' ? silentParam : false;
     setIsLoading(!silent);
     setIsRunning(true);
 
@@ -269,7 +280,7 @@ export default function App() {
         }
         
         if (data.ai_insights) {
-          circuitMessage += `${data.ai_insights.explanation}\n\n[HINT]: ${data.ai_insights.hint}`;
+          circuitMessage += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nELVO AI ANALYSIS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.ai_insights.explanation}\n\n[HINT]: ${data.ai_insights.hint}`;
         }
         
         setMessages(prev => [...prev, { role: 'assistant', isSystem: true, content: circuitMessage }]);
@@ -540,26 +551,29 @@ export default function App() {
               <button
                 className="canvas-run-btn"
                 onClick={handleStop}
-                style={{ position: 'relative', bottom: 'auto', right: 'auto', background: '#ef4444', borderColor: '#ef4444' }}
+                style={{ position: 'relative', bottom: 'auto', right: 'auto', background: '#ef4444', borderColor: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ⏹ STOP SIM
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '6px' }}><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                STOP SIM
               </button>
             ) : (
               <button
                 className="canvas-run-btn"
-                onClick={handleSimulate}
-                style={{ position: 'relative', bottom: 'auto', right: 'auto' }}
+                onClick={() => handleSimulate(false)}
+                style={{ position: 'relative', bottom: 'auto', right: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ▶ RUN SIM
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '6px' }}><path d="M8 5v14l11-7z"/></svg>
+                RUN SIM
               </button>
             )}
             <button
               className="canvas-run-btn"
               onClick={handleReset}
-              style={{ position: 'relative', bottom: 'auto', right: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.7rem' }}
+              style={{ position: 'relative', bottom: 'auto', right: 'auto', background: 'var(--bg-card)', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               title="Reset ke kondisi awal"
             >
-              ↺ RESET
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px' }}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              RESET
             </button>
           </div>
         </div>
