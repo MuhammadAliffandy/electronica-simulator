@@ -280,7 +280,7 @@ export default function App() {
         }
         
         if (data.ai_insights) {
-          circuitMessage += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nELVO AI ANALYSIS\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${data.ai_insights.explanation}\n\n[HINT]: ${data.ai_insights.hint}`;
+          circuitMessage += `ELVO AI ANALYSIS:\n${data.ai_insights.explanation}\n\n[HINT]: ${data.ai_insights.hint}`;
         }
         
         setMessages(prev => [...prev, { role: 'assistant', isSystem: true, content: circuitMessage }]);
@@ -584,6 +584,7 @@ export default function App() {
           <TutorPanel
             messages={messages}
             isChatLoading={isChatLoading}
+            isSimulating={isLoading}
             onSendMessage={handleSendMessage}
             chatInput={chatInput}
             setChatInput={setChatInput}
