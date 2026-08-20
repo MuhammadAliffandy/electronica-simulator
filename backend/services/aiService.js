@@ -48,6 +48,10 @@ function buildSystemPrompt(validationResult, lang) {
           circuitSummary += `\n  • Potentiometer P${i+1}: V_wiper = ${Number(comp.v_wiper || 0).toFixed(2)} V`;
         } else if (comp.type === 'multimeter') {
           circuitSummary += `\n  • Multimeter M${i+1}: Reading = ${comp.reading} ${comp.unit}`;
+        } else if (comp.type === 'motor') {
+          circuitSummary += `\n  • Motor M${i+1}: V_in = ${Number(comp.v || 0).toFixed(2)} V (Rated = ${comp.rated} V)`;
+        } else if (comp.type === 'buzzer') {
+          circuitSummary += `\n  • Buzzer BZ${i+1}: V_in = ${Number(comp.v || 0).toFixed(2)} V (Min = ${comp.minV} V)`;
         }
       });
     }

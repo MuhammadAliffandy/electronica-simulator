@@ -259,6 +259,13 @@ class MNAEngine {
         this.stampResistor(n1, n2, R);
       }
       
+      else if (type === 'motor' || type === 'buzzer') {
+        const R = 50; // simple 50 ohm internal resistance model
+        const n1 = this.getElectricalNode(n.id, 'a');
+        const n2 = this.getElectricalNode(n.id, 'b');
+        this.stampResistor(n1, n2, R);
+      }
+      
       else if (type === 'potentiometer') {
         const Rtotal = n.data?.resistance ?? 10000;
         const pos = Math.max(0, Math.min(1, n.data?.position ?? 0.5));

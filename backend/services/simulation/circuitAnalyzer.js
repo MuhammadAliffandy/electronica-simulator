@@ -27,6 +27,8 @@ function validateCircuit(nodes, edges) {
   const transistors = nodes.filter((n) => n.data?.componentType === "transistor"   || n.type === "transistor");
   const inductors   = nodes.filter((n) => n.data?.componentType === "inductor"     || n.type === "inductor");
   const multimeters = nodes.filter((n) => n.data?.componentType === "multimeter"   || n.type === "multimeter");
+  const motors      = nodes.filter((n) => n.data?.componentType === "motor"        || n.type === "motor");
+  const buzzers     = nodes.filter((n) => n.data?.componentType === "buzzer"       || n.type === "buzzer");
 
   const isAC = batteries.some(b => b.data?.sourceType === 'ac');
   const acFreq = isAC ? (batteries.find(b => b.data?.sourceType === 'ac').data?.frequency || 50) : 0;
@@ -316,6 +318,30 @@ function validateCircuit(nodes, edges) {
         const reading = nodes_state[m.id]?.reading || "0.00";
         const unit = mode === "V" ? "V" : mode === "A" ? "mA" : "Ω";
         analysisLog.push(` Multimeter M${idx+1} (mode: ${mode}): Pembacaan = ${reading} ${unit}`);
+      });
+    }
+
+    if (motors.length > 0) {
+      motors.forEach((m, idx) => {
+        const n1 = engine.getElectricalNode(m.id, 'a');
+        const n2 = engine.getElectricalNode(m.id, 'b');
+        const v = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
+        const rated = m.data?.ratedVoltage || 9;
+        const state = v >= rated ? 'MENYALA' : 'TIDAK MENYALA (Tegangan Kurang)';
+        analysisLog.push(` Motor DC M${idx+1}: ${state} — V_in = ${v.toFixed(2)} V (Rated = ${rated} V)`);
+        computedValues.components.push({ type: 'motor', id: m.id, v, rated });
+      });
+    }
+
+    if (buzzers.length > 0) {
+      buzzers.forEach((bz, idx) => {
+        const n1 = engine.getElectricalNode(bz.id, 'a');
+        const n2 = engine.getElectricalNode(bz.id, 'b');
+        const v = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
+        const minV = bz.data?.minVoltage || 3;
+        const state = v >= minV ? 'BERBUNYI' : 'SENYAP (Tegangan Kurang)';
+        analysisLog.push(` Buzzer BZ${idx+1}: ${state} — V_in = ${v.toFixed(2)} V (Min = ${minV} V)`);
+        computedValues.components.push({ type: 'buzzer', id: bz.id, v, minV });
       });
     }
 
