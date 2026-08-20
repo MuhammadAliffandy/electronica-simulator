@@ -27,14 +27,15 @@ export function PotentiometerNode({ id, data, selected }) {
           type="range" min="0" max="100" 
           value={data.wiperPercent || 50} 
           onChange={(e) => {
-            updateNodeData(id, { wiperPercent: Number(e.target.value) });
+            const val = Number(e.target.value);
+            updateNodeData(id, { wiperPercent: val, position: val / 100 });
             if (window.triggerSimulation) window.triggerSimulation();
           }}
           className="nodrag custom-slider" style={{ width: '80px', marginTop: '4px' }}
         />
       </div>
       <div style={{ fontSize: '0.6rem', marginTop: '4px', color: 'var(--text-muted)' }}>
-        Wiper: {data.wiperPercent || 50}% of {data.maxResistance || 10000}Ω
+        Wiper: {data.wiperPercent !== undefined ? data.wiperPercent : 50}% of {data.resistance || 10000}Ω
       </div>
     </BaseNode>
   );

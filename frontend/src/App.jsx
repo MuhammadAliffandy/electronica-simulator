@@ -58,7 +58,7 @@ const defaultNodes = [
     data: {
       label: "DC Source",
       componentType: "battery",
-      voltage: 9,
+      voltage: 0,
       sourceType: "dc",
     },
   },
@@ -69,7 +69,7 @@ const defaultNodes = [
     data: {
       label: "Resistor",
       componentType: "resistor",
-      resistance: 1000,
+      resistance: 0,
     },
   },
 ];
@@ -215,11 +215,11 @@ export default function App() {
   // Default parameter values for every component type.
   // All numeric values start at 0 — user sets them manually.
   const componentDefaults = {
-    battery:        { label: 'DC Source', voltage: 9, sourceType: 'dc' },
-    resistor:       { label: 'Resistor', resistance: 1000 },
-    capacitor:      { label: 'Capacitor', capacitance: 100 },
-    inductor:       { label: 'Inductor', inductance: 10 },
-    potentiometer:  { label: 'Potentiometer', resistance: 10000, position: 0.5 },
+    battery:        { label: 'DC Source', voltage: 0, sourceType: 'dc' },
+    resistor:       { label: 'Resistor', resistance: 0 },
+    capacitor:      { label: 'Capacitor', capacitance: 0 },
+    inductor:       { label: 'Inductor', inductance: 0 },
+    potentiometer:  { label: 'Potentiometer', resistance: 10000, wiperPercent: 50, position: 0.5 },
     diode:          { label: 'Diode', vf: 0.7 },
     led:            { label: 'LED', vf: 2.0 },
     transistor:     { label: 'Transistor', hfe: 100 },
