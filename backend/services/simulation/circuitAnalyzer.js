@@ -28,6 +28,9 @@ function validateCircuit(nodes, edges) {
   const inductors   = nodes.filter((n) => n.data?.componentType === "inductor"     || n.type === "inductor");
   const multimeters = nodes.filter((n) => n.data?.componentType === "multimeter"   || n.type === "multimeter");
 
+  const isAC = batteries.some(b => b.data?.sourceType === 'ac');
+  const acFreq = isAC ? (batteries.find(b => b.data?.sourceType === 'ac').data?.frequency || 50) : 0;
+
   if (nodes.length < 2) {
     errorLog.push(" Sebuah rangkaian membutuhkan setidaknya 2 komponen.");
   }
@@ -153,7 +156,10 @@ function validateCircuit(nodes, edges) {
         let hasSemiconductor = leds.length > 0 || diodes.length > 0 || transistors.length > 0;
 
         // Diketahui
-        let knownStr = ` Diketahui: Vs = ${v.toFixed(2)} V DC`;
+        let sourceType = b.data?.sourceType || 'dc';
+        let freq = b.data?.frequency || 50;
+        let sourceLabel = sourceType === 'ac' ? `AC (${freq} Hz)` : 'DC';
+        let knownStr = ` Diketahui: Vs = ${v.toFixed(2)} V ${sourceLabel}`;
         if (resistors.length > 0) {
           knownStr += ` | ` + resistors.map((r, idx) => `R${idx+1} = ${r.data?.resistance ?? 1000} Ω`).join(', ');
         }
@@ -240,8 +246,14 @@ function validateCircuit(nodes, edges) {
         const c_val = (c.data?.capacitance ?? 100) * 1e-6; // µF → F
         const R_tau = R_resistors_total > 0 ? R_resistors_total : 1;
         const tau = R_tau * c_val;
-        analysisLog.push(` Kapasitor C${idx+1} (${c.data?.capacitance ?? 100} µF): Vc = ${vc.toFixed(2)} V (steady-state). τ = R × C = ${R_tau.toFixed(0)} Ω × ${(c.data?.capacitance ?? 100)} µF = ${(tau * 1000).toFixed(2)} ms`);
-        computedValues.components.push({ type: 'capacitor', id: c.id, v: vc, tau_s: tau });
+        let xc = null;
+        if (isAC) {
+          xc = c_val > 0 ? 1 / (2 * Math.PI * acFreq * c_val) : 0;
+          analysisLog.push(` Kapasitor C${idx+1} (${c.data?.capacitance ?? 100} µF): Xc (Reaktansi Kapasitif) = ${xc.toFixed(2)} Ω pada frekuensi ${acFreq} Hz`);
+        } else {
+          analysisLog.push(` Kapasitor C${idx+1} (${c.data?.capacitance ?? 100} µF): Vc = ${vc.toFixed(2)} V (steady-state). τ = R × C = ${R_tau.toFixed(0)} Ω × ${(c.data?.capacitance ?? 100)} µF = ${(tau * 1000).toFixed(2)} ms`);
+        }
+        computedValues.components.push({ type: 'capacitor', id: c.id, v: vc, tau_s: tau, xc });
       });
     }
 
@@ -250,8 +262,14 @@ function validateCircuit(nodes, edges) {
         const l_val = (ind.data?.inductance ?? 10) * 1e-3; // mH → H
         const R_tau = R_resistors_total > 0 ? R_resistors_total : 1;
         const tau = l_val / R_tau;
-        analysisLog.push(` Induktor L${idx+1} (${ind.data?.inductance ?? 10} mH): Short circuit pada DC. τ = L / R = ${(ind.data?.inductance ?? 10)} mH / ${R_tau.toFixed(0)} Ω = ${(tau * 1e6).toFixed(1)} µs`);
-        computedValues.components.push({ type: 'inductor', id: ind.id, tau_s: tau });
+        let xl = null;
+        if (isAC) {
+          xl = l_val > 0 ? 2 * Math.PI * acFreq * l_val : 0;
+          analysisLog.push(` Induktor L${idx+1} (${ind.data?.inductance ?? 10} mH): Xl (Reaktansi Induktif) = ${xl.toFixed(2)} Ω pada frekuensi ${acFreq} Hz`);
+        } else {
+          analysisLog.push(` Induktor L${idx+1} (${ind.data?.inductance ?? 10} mH): Short circuit pada DC. τ = L / R = ${(ind.data?.inductance ?? 10)} mH / ${R_tau.toFixed(0)} Ω = ${(tau * 1e6).toFixed(1)} µs`);
+        }
+        computedValues.components.push({ type: 'inductor', id: ind.id, tau_s: tau, xl });
       });
     }
 
@@ -302,21 +320,29 @@ function validateCircuit(nodes, edges) {
     }
 
     // Kesimpulan
-    if (totalPower > 0) {
+    if (isAC) {
+      const acZ = calculateACImpedance(nodes, edges, acFreq, R_resistors_total);
       const vs = batteries.length > 0 ? (batteries[0].data?.voltage ?? 9) : 1;
-      const i_total = vs > 0 ? (totalPower * 1000 / vs) : 0;
-      const p_total = totalPower * 1000;
-      const i_str = isFinite(i_total) ? i_total.toFixed(2) : '∞';
-      const p_str = isFinite(p_total) ? p_total.toFixed(2) : '∞';
-      analysisLog.push(` Kesimpulan: Rangkaian AKTIF — I_total = ${i_str} mA, P_total = ${p_str} mW`);
-    } else if (capacitors.length > 0) {
-      analysisLog.push(" Kesimpulan: Kapasitor terisi penuh (Steady-State) — Arus DC = 0.00 mA (Kapasitor memblokir arus DC)");
+      const irms = vs / (acZ.Z > 0 ? acZ.Z : 1) * 1000;
+      computedValues.ac = { isAC: true, z: acZ.Z, xl: acZ.Xl, xc: acZ.Xc, irms: irms, freq: acFreq };
+      analysisLog.push(` Kesimpulan (Mode AC): Impedansi Total (Z) = ${acZ.Z.toFixed(2)} Ω, Arus RMS (I_rms) = ${irms.toFixed(2)} mA, Beda Fase = ${acZ.phaseAngleDeg.toFixed(1)}°`);
     } else {
-      analysisLog.push(" Kesimpulan: Rangkaian TERBUKA — Arus = 0.00 mA");
+      if (totalPower > 0) {
+        const vs = batteries.length > 0 ? (batteries[0].data?.voltage ?? 9) : 1;
+        const i_total = vs > 0 ? (totalPower * 1000 / vs) : 0;
+        const p_total = totalPower * 1000;
+        const i_str = isFinite(i_total) ? i_total.toFixed(2) : '∞';
+        const p_str = isFinite(p_total) ? p_total.toFixed(2) : '∞';
+        analysisLog.push(` Kesimpulan: Rangkaian AKTIF — I_total = ${i_str} mA, P_total = ${p_str} mW`);
+      } else if (capacitors.length > 0) {
+        analysisLog.push(" Kesimpulan: Kapasitor terisi penuh (Steady-State) — Arus DC = 0.00 mA (Kapasitor memblokir arus DC)");
+      } else {
+        analysisLog.push(" Kesimpulan: Rangkaian TERBUKA — Arus = 0.00 mA");
+      }
     }
 
-    // Update R_total in computedValues using actual MNA if available
-    if (computedValues.I_mA > 1e-3 && computedValues.V_s > 0) {
+    // Update R_total in computedValues using actual MNA if available (only for DC)
+    if (!isAC && computedValues.I_mA > 1e-3 && computedValues.V_s > 0) {
       computedValues.R_total = (computedValues.V_s / computedValues.I_mA) * 1000; // V / mA -> Ohm
     }
 

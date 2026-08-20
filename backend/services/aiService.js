@@ -10,9 +10,17 @@ function buildSystemPrompt(validationResult, lang) {
   let circuitSummary = '';
   if (cv) {
     circuitSummary += `\n\nCIRCUIT NUMERICAL DATA (use these exact numbers in your response):`;
-    circuitSummary += `\n- Source Voltage (Vs): ${cv.V_s} V`;
-    circuitSummary += `\n- Total Current (I_total): ${cv.I_mA !== undefined ? Number(cv.I_mA).toFixed(2) : '0.00'} mA`;
-    circuitSummary += `\n- Effective Resistance (R_total): ${cv.R_total !== undefined ? Number(cv.R_total).toFixed(1) : '0'} Ω`;
+    circuitSummary += `\n- Source Voltage (Vs): ${cv.V_s !== undefined ? Number(cv.V_s).toFixed(2) : '0'} V`;
+    if (cv.ac && cv.ac.isAC) {
+      circuitSummary += `\n- Source Type: AC (${cv.ac.freq} Hz)`;
+      circuitSummary += `\n- Total Current RMS (I_rms): ${cv.ac.irms !== undefined ? Number(cv.ac.irms).toFixed(2) : '0'} mA`;
+      circuitSummary += `\n- Total Impedance (Z): ${cv.ac.z !== undefined ? Number(cv.ac.z).toFixed(2) : '0'} Ω`;
+    } else {
+      circuitSummary += `\n- Source Type: DC`;
+      circuitSummary += `\n- Total Current (I_total): ${cv.I_mA !== undefined ? Number(cv.I_mA).toFixed(2) : '0'} mA`;
+      circuitSummary += `\n- Effective Resistance (R_total): ${cv.R_total !== undefined ? Number(cv.R_total).toFixed(1) : '0'} Ω`;
+    }
+    
     if (cv.components && cv.components.length > 0) {
       circuitSummary += `\n- Component Details:`;
       cv.components.forEach((comp, i) => {
@@ -23,9 +31,17 @@ function buildSystemPrompt(validationResult, lang) {
         } else if (comp.type === 'diode') {
           circuitSummary += `\n  • Diode D${i+1}: State = ${comp.state || 'OFF'}, V(A-K) = ${Number(comp.vak || 0).toFixed(2)} V`;
         } else if (comp.type === 'capacitor') {
-          circuitSummary += `\n  • Capacitor C${i+1}: Vc = ${Number(comp.v).toFixed(2)} V (steady-state), τ = ${Number(comp.tau_s * 1000).toFixed(2)} ms`;
+          if (comp.xc !== null && comp.xc !== undefined) {
+            circuitSummary += `\n  • Capacitor C${i+1}: Xc = ${Number(comp.xc).toFixed(2)} Ω`;
+          } else {
+            circuitSummary += `\n  • Capacitor C${i+1}: Vc = ${Number(comp.v).toFixed(2)} V (steady-state), τ = ${Number(comp.tau_s * 1000).toFixed(2)} ms`;
+          }
         } else if (comp.type === 'inductor') {
-          circuitSummary += `\n  • Inductor L${i+1}: τ = ${Number(comp.tau_s * 1e6).toFixed(1)} µs`;
+          if (comp.xl !== null && comp.xl !== undefined) {
+            circuitSummary += `\n  • Inductor L${i+1}: Xl = ${Number(comp.xl).toFixed(2)} Ω`;
+          } else {
+            circuitSummary += `\n  • Inductor L${i+1}: τ = ${Number(comp.tau_s * 1e6).toFixed(1)} µs`;
+          }
         } else if (comp.type === 'transistor') {
           circuitSummary += `\n  • Transistor T${i+1}: State = ${comp.state || 'OFF'}`;
         } else if (comp.type === 'potentiometer') {
@@ -121,6 +137,18 @@ function generateMockAIResponse(validationResult, lang) {
         explanation: `Secara fisis, elektron memerlukan lintasan tertutup untuk mengalir dari terminal positif (+${vs} V) menuju terminal negatif (0 V). Saat ini jalur tersebut terputus, sehingga I = 0 mA secara absolut.`,
         hint: hasSwitch ? 'Apakah ada sakelar yang masih dalam posisi terbuka? Coba tutup sakelarnya.' : 'Lacak jalur kabelmu — apakah semua pin komponen sudah terhubung?',
         suggestion_button_text: 'Periksa sambungan kabel!',
+      };
+    }
+
+    // --- AC Circuit ---
+    if (computedValues?.ac && computedValues.ac.isAC) {
+      const z = Number(computedValues.ac.z).toFixed(2);
+      const irms = Number(computedValues.ac.irms).toFixed(2);
+      return {
+        greeting: 'Analisis Rangkaian Arus Bolak-Balik (AC)',
+        explanation: `Sistem ini disuplai oleh tegangan AC dengan frekuensi ${computedValues.ac.freq} Hz. Sifat dari kapasitor dan induktor berubah menjadi reaktansi (Xc dan Xl), sehingga kita tidak lagi hanya menjumlahkan resistansi, melainkan menghitung total impedansi (Z). Saat ini Z = ${z} Ω, menghasilkan I_rms = ${irms} mA.`,
+        hint: 'Perhatikan bahwa pada AC, arus dapat mengalir melewati kapasitor secara kontinu!',
+        suggestion_button_text: 'Lanjutkan observasi AC!',
       };
     }
 
