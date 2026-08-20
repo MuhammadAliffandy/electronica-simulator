@@ -5,12 +5,12 @@ function calculateACImpedance(nodes, edges, frequency, totalResistance) {
   // Asumsi penyederhanaan seri untuk R-L-C
   nodes.forEach(n => {
     if (n.type === 'inductor' || n.data?.componentType === 'inductor') {
-      const L_mH = n.data?.inductance || 0;
+      const L_mH = n.data?.inductance ?? 0;
       totalL_H += (L_mH * 1e-3);
     }
     if (n.type === 'capacitor' || n.data?.componentType === 'capacitor') {
-      const C_val = n.data?.capacitance || 0;
-      const type = n.data?.capType || 'elco';
+      const C_val = n.data?.capacitance ?? 0;
+      const type = n.data?.capType ?? 'elco';
       
       const C_F = type === 'elco' ? (C_val * 1e-6) : (C_val * 1e-9);
       if (C_F > 0) {

@@ -152,7 +152,7 @@ class MNAEngine {
         this.M_vars++;
       }
       if (n.type === 'multimeter' || n.data?.componentType === 'multimeter') {
-        const mode = n.data?.mode || "V";
+        const mode = n.data?.mode ?? "V";
         if (mode === "A") {
           this.M_vars++;
         }
@@ -237,14 +237,14 @@ class MNAEngine {
       const type = n.type || n.data?.componentType;
       
       if (type === 'resistor') {
-        const R = n.data?.resistance || 1000;
+        const R = n.data?.resistance ?? 1000;
         const n1 = this.getElectricalNode(n.id, 'a');
         const n2 = this.getElectricalNode(n.id, 'b');
         this.stampResistor(n1, n2, R);
       }
       
       else if (type === 'battery') {
-        const V = n.data?.voltage || 9;
+        const V = n.data?.voltage ?? 9;
         const np = this.getElectricalNode(n.id, 'a'); // +
         const nn = this.getElectricalNode(n.id, 'b'); // -
         this.compStates[`${n.id}_vIdx`] = vSourceIdx;
@@ -252,7 +252,7 @@ class MNAEngine {
       }
       
       else if (type === 'switch') {
-        const state = n.data?.state || "open";
+        const state = n.data?.state ?? "open";
         const R = state === "closed" ? 1e-6 : 1e9; // 1 microOhm vs 1 GigaOhm
         const n1 = this.getElectricalNode(n.id, 'a');
         const n2 = this.getElectricalNode(n.id, 'b');
@@ -260,8 +260,8 @@ class MNAEngine {
       }
       
       else if (type === 'potentiometer') {
-        const Rtotal = n.data?.resistance || 10000;
-        const pos = Math.max(0, Math.min(1, n.data?.position || 0.5));
+        const Rtotal = n.data?.resistance ?? 10000;
+        const pos = Math.max(0, Math.min(1, n.data?.position ?? 0.5));
         const R1 = Math.max(1e-6, (1 - pos) * Rtotal);
         const R2 = Math.max(1e-6, pos * Rtotal);
         
@@ -274,7 +274,7 @@ class MNAEngine {
       }
       
       else if (type === 'multimeter') {
-        const mode = n.data?.mode || "V";
+        const mode = n.data?.mode ?? "V";
         const n1 = this.getElectricalNode(n.id, 'a');
         const n2 = this.getElectricalNode(n.id, 'b');
         if (mode === "V") {
@@ -304,7 +304,7 @@ class MNAEngine {
       
       else if (type === 'diode' || type === 'led') {
         const state = this.compStates[n.id] || 'OFF';
-        const Vf = type === 'led' ? (n.data?.vf || 2.0) : (n.data?.vf || 0.7);
+        const Vf = type === 'led' ? (n.data?.vf ?? 2.0) : (n.data?.vf ?? 0.7);
         const na = this.getElectricalNode(n.id, 'a'); // Anode
         const nk = this.getElectricalNode(n.id, 'b'); // Cathode
         
@@ -321,7 +321,7 @@ class MNAEngine {
       
       else if (type === 'transistor') {
         const state = this.compStates[n.id] || 'OFF';
-        const hFE = n.data?.hfe || 100;
+        const hFE = n.data?.hfe ?? 100;
         const Vbe = 0.7;
         const Vce_sat = 0.2;
         
@@ -411,7 +411,7 @@ class MNAEngine {
       this.nodes.forEach(n => {
         const type = n.type || n.data?.componentType;
         if (type === 'diode' || type === 'led') {
-          const Vf = type === 'led' ? (n.data?.vf || 2.0) : (n.data?.vf || 0.7);
+          const Vf = type === 'led' ? (n.data?.vf ?? 2.0) : (n.data?.vf ?? 0.7);
           const na = this.getElectricalNode(n.id, 'a');
           const nk = this.getElectricalNode(n.id, 'b');
           const Va = this.getNodeVoltage(na, x);

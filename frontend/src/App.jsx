@@ -58,7 +58,7 @@ const defaultNodes = [
     data: {
       label: "DC Source",
       componentType: "battery",
-      voltage: 0,
+      voltage: 9,
       sourceType: "dc",
     },
   },
@@ -69,7 +69,7 @@ const defaultNodes = [
     data: {
       label: "Resistor",
       componentType: "resistor",
-      resistance: 0,
+      resistance: 1000,
     },
   },
 ];
@@ -212,6 +212,25 @@ export default function App() {
     event.dataTransfer.dropEffect = "move";
   }, []);
 
+  // Default parameter values for every component type.
+  // These ensure the backend always receives explicit values instead of undefined.
+  const componentDefaults = {
+    battery:        { label: 'DC Source', voltage: 9, sourceType: 'dc' },
+    resistor:       { label: 'Resistor', resistance: 1000 },
+    capacitor:      { label: 'Capacitor', capacitance: 100 },
+    inductor:       { label: 'Inductor', inductance: 10 },
+    potentiometer:  { label: 'Potentiometer', resistance: 10000, position: 0.5 },
+    diode:          { label: 'Diode', vf: 0.7 },
+    led:            { label: 'LED', vf: 2.0 },
+    transistor:     { label: 'Transistor', hfe: 100 },
+    switch:         { label: 'Switch', state: 'open' },
+    multimeter:     { label: 'Multimeter', mode: 'V' },
+    oscilloscope:   { label: 'Oscilloscope' },
+    buzzer:         { label: 'Buzzer' },
+    motor:          { label: 'DC Motor' },
+    junction:       { label: 'Junction' },
+  };
+
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
@@ -229,11 +248,15 @@ export default function App() {
         parsedData = defaultDataStr ? JSON.parse(defaultDataStr) : {};
       } catch (e) { }
 
+      // Merge: component defaults → sidebar drag data → componentType
+      const defaults = componentDefaults[type] || {};
+
       const newNode = {
         id: `${type}-${nodeIdCounter++}`,
         type,
         position,
         data: {
+          ...defaults,
           ...parsedData,
           componentType: type,
         },

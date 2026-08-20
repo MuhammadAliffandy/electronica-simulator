@@ -120,11 +120,27 @@ exports.evaluateCircuit = async (req, res) => {
 
     console.log(`\n📡 Received evaluation request: ${nodes.length} nodes, ${edges.length} edges`);
 
+    // Sanitize node data — convert empty strings / invalid values to proper numbers
+    // This prevents '' from bypassing ?? fallbacks in the physics engine
+    const sanitizedNodes = nodes.map(n => {
+      if (!n.data) return n;
+      const d = { ...n.data };
+      const numericFields = ['voltage', 'resistance', 'capacitance', 'inductance', 'vf', 'hfe', 'frequency', 'position', 'ratedVoltage', 'minVoltage'];
+      numericFields.forEach(f => {
+        if (f in d && (d[f] === '' || d[f] === null || (typeof d[f] === 'number' && isNaN(d[f])))) {
+          d[f] = 0;
+        } else if (f in d) {
+          d[f] = Number(d[f]);
+        }
+      });
+      return { ...n, data: d };
+    });
+
     // Normalize handle IDs before passing to the physics engine
-    const normalizedEdges = normalizeEdges(nodes, edges);
+    const normalizedEdges = normalizeEdges(sanitizedNodes, edges);
 
     // Step 1: Deterministic circuit validation
-    const validationResult = validateCircuit(nodes, normalizedEdges);
+    const validationResult = validateCircuit(sanitizedNodes, normalizedEdges);
 
     // Step 2: AI Tutor analysis (OpenAI → Ollama → Mock)
     const { source, insights } = await getAIInsights(validationResult, lang);

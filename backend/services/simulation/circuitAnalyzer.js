@@ -41,7 +41,7 @@ function validateCircuit(nodes, edges) {
   }
 
   // Check switch state
-  const openSwitches = switches.filter((s) => (s.data?.state || "open") === "open");
+  const openSwitches = switches.filter((s) => (s.data?.state ?? "open") === "open");
   if (openSwitches.length > 0) {
     errorLog.push(`🔘 Sakelar TERBUKA — arus tidak akan mengalir sampai ditutup.`);
     openSwitches.forEach(s => errorNodes[s.id] = "Sakelar terbuka, memutus aliran listrik.");
@@ -54,7 +54,7 @@ function validateCircuit(nodes, edges) {
   leds.forEach(l => { nodes_state[l.id] = { ledState: "off" }; });
 
   // Calculate actual total resistance from resistors for use in tau formulas
-  const R_resistors_total = resistors.reduce((sum, r) => sum + (r.data?.resistance || 1000), 0);
+  const R_resistors_total = resistors.reduce((sum, r) => sum + (r.data?.resistance ?? 1000), 0);
 
   // 1. Run Modified Nodal Analysis (MNA)
   const engine = new MNAEngine();
@@ -90,7 +90,7 @@ function validateCircuit(nodes, edges) {
 
     // Evaluate Multimeters
     multimeters.forEach((m, i) => {
-      const mode = m.data?.mode || "V";
+      const mode = m.data?.mode ?? "V";
       const n1 = engine.getElectricalNode(m.id, 'a');
       const n2 = engine.getElectricalNode(m.id, 'b');
       let readingStr = "0.00";
@@ -118,7 +118,7 @@ function validateCircuit(nodes, edges) {
     let totalPower = 0;
 
     computedValues = {
-      V_s: batteries.length > 0 ? (batteries[0].data?.voltage || 9) : 0,
+      V_s: batteries.length > 0 ? (batteries[0].data?.voltage ?? 9) : 0,
       I_mA: 0,
       R_total: R_resistors_total || 0,
       components: []
@@ -129,7 +129,7 @@ function validateCircuit(nodes, edges) {
     analysisLog.push("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
     batteries.forEach((b, i) => {
-      const v = b.data?.voltage || 9;
+      const v = b.data?.voltage ?? 9;
       const vIdx = engine.compStates[`${b.id}_vIdx`];
       if (vIdx !== undefined) {
         const mRow = engine.N_vars + vIdx;
@@ -142,10 +142,10 @@ function validateCircuit(nodes, edges) {
         // Estimasi Veff jika ada semikonduktor (LED/Diode) untuk tampilan edukatif
         let totalVf = 0;
         leds.forEach(l => {
-          if (compStates[l.id] === 'ON') totalVf += (l.data?.vf || 2.0);
+          if (compStates[l.id] === 'ON') totalVf += (l.data?.vf ?? 2.0);
         });
         diodes.forEach(d => {
-          if (compStates[d.id] === 'ON') totalVf += (d.data?.vf || 0.7);
+          if (compStates[d.id] === 'ON') totalVf += (d.data?.vf ?? 0.7);
         });
         let veff = v - totalVf;
         if (veff < 0) veff = 0;
@@ -155,16 +155,16 @@ function validateCircuit(nodes, edges) {
         // Diketahui
         let knownStr = ` Diketahui: Vs = ${v.toFixed(2)} V DC`;
         if (resistors.length > 0) {
-          knownStr += ` | ` + resistors.map((r, idx) => `R${idx+1} = ${r.data?.resistance || 1000} Ω`).join(', ');
+          knownStr += ` | ` + resistors.map((r, idx) => `R${idx+1} = ${r.data?.resistance ?? 1000} Ω`).join(', ');
         }
         if (leds.length > 0) {
-          knownStr += ` | ` + leds.map((l, idx) => `LED${idx+1} Vf ≈ ${l.data?.vf || 2.0} V`).join(', ');
+          knownStr += ` | ` + leds.map((l, idx) => `LED${idx+1} Vf ≈ ${l.data?.vf ?? 2.0} V`).join(', ');
         }
         if (capacitors.length > 0) {
-          knownStr += ` | ` + capacitors.map((c, idx) => `C${idx+1} = ${c.data?.capacitance || 100} µF`).join(', ');
+          knownStr += ` | ` + capacitors.map((c, idx) => `C${idx+1} = ${c.data?.capacitance ?? 100} µF`).join(', ');
         }
         if (inductors.length > 0) {
-          knownStr += ` | ` + inductors.map((ind, idx) => `L${idx+1} = ${ind.data?.inductance || 10} mH`).join(', ');
+          knownStr += ` | ` + inductors.map((ind, idx) => `L${idx+1} = ${ind.data?.inductance ?? 10} mH`).join(', ');
         }
         analysisLog.push(knownStr);
 
@@ -207,9 +207,11 @@ function validateCircuit(nodes, edges) {
         const n1 = engine.getElectricalNode(r.id, 'a');
         const n2 = engine.getElectricalNode(r.id, 'b');
         const vr = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
-        const r_val = r.data?.resistance || 1000;
-        const ir = vr / r_val * 1000; // mA
-        analysisLog.push(` Distribusi R${idx+1} (${r_val} Ω): V = ${vr.toFixed(2)} V, I = ${ir.toFixed(2)} mA`);
+        const r_val = r.data?.resistance ?? 1000;
+        const ir = r_val > 0 ? (vr / r_val * 1000) : 0; // mA — guard div-by-zero
+        const ir_display = isFinite(ir) ? ir.toFixed(2) : '0.00';
+        const vr_display = isFinite(vr) ? vr.toFixed(2) : '0.00';
+        analysisLog.push(` Distribusi R${idx+1} (${r_val} Ω): V = ${vr_display} V, I = ${ir_display} mA`);
         computedValues.components.push({ type: 'resistor', id: r.id, v: vr, i_mA: ir, r: r_val });
       });
     }
@@ -220,7 +222,7 @@ function validateCircuit(nodes, edges) {
         const na = engine.getElectricalNode(l.id, 'a');
         const nk = engine.getElectricalNode(l.id, 'b');
         const Vak = (engine.getNodeVoltage(na, mnaResult.x) - engine.getNodeVoltage(nk, mnaResult.x));
-        const Vf = l.data?.vf || 2.0;
+        const Vf = l.data?.vf ?? 2.0;
         if (state === 'ON') {
           analysisLog.push(` LED${idx+1}: MENYALA — Tegangan maju Vf = ${Vf.toFixed(2)} V, V(A-K) = ${Vak.toFixed(2)} V`);
         } else {
@@ -235,20 +237,20 @@ function validateCircuit(nodes, edges) {
         const n1 = engine.getElectricalNode(c.id, 'a');
         const n2 = engine.getElectricalNode(c.id, 'b');
         const vc = Math.abs(engine.getNodeVoltage(n1, mnaResult.x) - engine.getNodeVoltage(n2, mnaResult.x));
-        const c_val = (c.data?.capacitance || 100) * 1e-6; // µF → F
+        const c_val = (c.data?.capacitance ?? 100) * 1e-6; // µF → F
         const R_tau = R_resistors_total > 0 ? R_resistors_total : 1;
         const tau = R_tau * c_val;
-        analysisLog.push(` Kapasitor C${idx+1} (${c.data?.capacitance || 100} µF): Vc = ${vc.toFixed(2)} V (steady-state). τ = R × C = ${R_tau.toFixed(0)} Ω × ${(c.data?.capacitance || 100)} µF = ${(tau * 1000).toFixed(2)} ms`);
+        analysisLog.push(` Kapasitor C${idx+1} (${c.data?.capacitance ?? 100} µF): Vc = ${vc.toFixed(2)} V (steady-state). τ = R × C = ${R_tau.toFixed(0)} Ω × ${(c.data?.capacitance ?? 100)} µF = ${(tau * 1000).toFixed(2)} ms`);
         computedValues.components.push({ type: 'capacitor', id: c.id, v: vc, tau_s: tau });
       });
     }
 
     if (inductors.length > 0) {
       inductors.forEach((ind, idx) => {
-        const l_val = (ind.data?.inductance || 10) * 1e-3; // mH → H
+        const l_val = (ind.data?.inductance ?? 10) * 1e-3; // mH → H
         const R_tau = R_resistors_total > 0 ? R_resistors_total : 1;
         const tau = l_val / R_tau;
-        analysisLog.push(` Induktor L${idx+1} (${ind.data?.inductance || 10} mH): Short circuit pada DC. τ = L / R = ${(ind.data?.inductance || 10)} mH / ${R_tau.toFixed(0)} Ω = ${(tau * 1e6).toFixed(1)} µs`);
+        analysisLog.push(` Induktor L${idx+1} (${ind.data?.inductance ?? 10} mH): Short circuit pada DC. τ = L / R = ${(ind.data?.inductance ?? 10)} mH / ${R_tau.toFixed(0)} Ω = ${(tau * 1e6).toFixed(1)} µs`);
         computedValues.components.push({ type: 'inductor', id: ind.id, tau_s: tau });
       });
     }
@@ -259,7 +261,7 @@ function validateCircuit(nodes, edges) {
         const na = engine.getElectricalNode(d.id, 'a');
         const nk = engine.getElectricalNode(d.id, 'b');
         const Vak = engine.getNodeVoltage(na, mnaResult.x) - engine.getNodeVoltage(nk, mnaResult.x);
-        const Vf = d.data?.vf || 0.7;
+        const Vf = d.data?.vf ?? 0.7;
         if (state === 'ON') {
           analysisLog.push(` Dioda D${idx+1}: KONDUKSI MAJU — V(A-K) = ${Vak.toFixed(2)} V (Vf = ${Vf.toFixed(2)} V)`);
         } else {
@@ -275,8 +277,8 @@ function validateCircuit(nodes, edges) {
         const na = engine.getElectricalNode(p.id, 'a');
         const v_wiper = engine.getNodeVoltage(nw, mnaResult.x);
         const v_a = engine.getNodeVoltage(na, mnaResult.x);
-        const pos = p.data?.position || 0.5;
-        const Rtotal = p.data?.resistance || 10000;
+        const pos = p.data?.position ?? 0.5;
+        const Rtotal = p.data?.resistance ?? 10000;
         analysisLog.push(` Potensiometer P${idx+1} (${Rtotal} Ω, posisi ${(pos*100).toFixed(0)}%): V_wiper = ${v_wiper.toFixed(2)} V`);
         computedValues.components.push({ type: 'potentiometer', id: p.id, v_wiper, position: pos, r_total: Rtotal });
       });
@@ -292,7 +294,7 @@ function validateCircuit(nodes, edges) {
 
     if (multimeters.length > 0) {
       multimeters.forEach((m, idx) => {
-        const mode = m.data?.mode || "V";
+        const mode = m.data?.mode ?? "V";
         const reading = nodes_state[m.id]?.reading || "0.00";
         const unit = mode === "V" ? "V" : mode === "A" ? "mA" : "Ω";
         analysisLog.push(` Multimeter M${idx+1} (mode: ${mode}): Pembacaan = ${reading} ${unit}`);
@@ -301,8 +303,12 @@ function validateCircuit(nodes, edges) {
 
     // Kesimpulan
     if (totalPower > 0) {
-      const vs = batteries.length > 0 ? (batteries[0].data?.voltage || 9) : 1;
-      analysisLog.push(` Kesimpulan: Rangkaian AKTIF — I_total = ${(totalPower * 1000 / vs).toFixed(2)} mA, P_total = ${(totalPower * 1000).toFixed(2)} mW`);
+      const vs = batteries.length > 0 ? (batteries[0].data?.voltage ?? 9) : 1;
+      const i_total = vs > 0 ? (totalPower * 1000 / vs) : 0;
+      const p_total = totalPower * 1000;
+      const i_str = isFinite(i_total) ? i_total.toFixed(2) : '∞';
+      const p_str = isFinite(p_total) ? p_total.toFixed(2) : '∞';
+      analysisLog.push(` Kesimpulan: Rangkaian AKTIF — I_total = ${i_str} mA, P_total = ${p_str} mW`);
     } else if (capacitors.length > 0) {
       analysisLog.push(" Kesimpulan: Kapasitor terisi penuh (Steady-State) — Arus DC = 0.00 mA (Kapasitor memblokir arus DC)");
     } else {
